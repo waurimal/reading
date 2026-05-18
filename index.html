@@ -1,11 +1,299 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Sprint 🏃‍♂️💨</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 650px;
+            text-align: center;
+            position: relative;
+        }
+        h1 { color: #ff6b6b; font-size: 2.5em; margin-bottom: 5px;}
+        .screen { display: none; }
+        .screen.active { display: block; }
+        
+        input, select, button {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.2em;
+            padding: 10px;
+            margin: 10px 5px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+        }
+        button {
+            background-color: #4ecdc4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); }
+        button.record-btn {
+            background-color: #ff6b6b;
+            font-size: 1.5em;
+            padding: 15px 30px;
+            border-radius: 30px;
+            margin-top: 20px;
+        }
+        .teacher-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #95a5a6;
+            font-size: 0.8em;
+            padding: 5px 10px;
+        }
+        
+        .target-text {
+            font-size: 2em;
+            color: #2c3e50;
+            background-color: #fff9c4;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px dashed #ffeb3b;
+        }
+        
+        #timerDisplay { font-size: 1.5em; color: #e74c3c; margin: 10px 0; }
+        .feedback { font-size: 1.2em; margin-top: 20px; color: #2980b9; background-color: #f8f9fa; padding: 20px; border-radius: 15px;}
+        
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .leaderboard-list li {
+            background-color: #f1f2f6;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dashboard-section {
+            background-color: #f1f2f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .unit-list-item {
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            align-items: center;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            font-size: 0.8em;
+            padding: 5px 10px;
+        }
+        #banner {
+            background-color: #ff9f43;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9em;
+        }
+        .school-badge { 
+            display: inline-block; 
+            margin-top: 10px; 
+            font-size: 0.55em; 
+            color: #636e72; 
+            font-weight: 500; 
+            background-color: #f1f2f6; 
+            padding: 6px 20px; 
+            border-radius: 25px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            letter-spacing: 1px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <button class="teacher-btn" onclick="window.showScreen('teacherLoginScreen')">⚙️ 교사 설정</button>
+    <div id="banner">오프라인(로컬) 모드로 실행 중입니다. 데이터는 현재 브라우저에만 저장됩니다.</div>
+
+    <!-- 화면 1: 로그인 -->
+    <div id="loginScreen" class="screen active">
+        <h1 id="mainAppTitle">Reading Sprint 🏃‍♂️💨</h1>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; margin-top: 20px;">
+            <select id="grade">
+                <option value="">학년</option>
+                <option value="3">3학년</option>
+                <option value="4">4학년</option>
+                <option value="5">5학년</option>
+                <option value="6">6학년</option>
+            </select>
+            <select id="classNum">
+                <option value="">반</option>
+                <option value="1">1반</option>
+                <option value="2">2반</option>
+                <option value="3">3반</option>
+                <option value="4">4반</option>
+                <option value="5">5반</option>
+                <option value="6">6반</option>
+                <option value="7">7반</option>
+                <option value="8">8반</option>
+                <option value="9">9반</option>
+                <option value="10">10반</option>
+            </select>
+            <input type="number" id="studentNum" placeholder="번호" style="width: 80px;">
+            <input type="text" id="studentName" placeholder="이름" style="width: 120px;">
+        </div>
+        <button onclick="window.login()" style="margin-top: 20px; font-size: 1.3em; padding: 10px 40px;">입장하기</button>
+    </div>
+
+    <!-- 화면 2: 단원 선택 로비 -->
+    <div id="lobbyScreen" class="screen">
+        <h1 id="welcomeMsg" style="font-size: 2em;">환영합니다!</h1>
+        <h2 style="color: #636e72;">학습할 단원을 선택하세요</h2>
+        <select id="unitSelect" style="width: 80%; max-width: 400px;">
+            <!-- 단원 목록 동적 렌더링 -->
+        </select>
+        <br><br>
+        <button onclick="window.startPractice()" style="font-size: 1.3em; padding: 15px 30px;">🚀 연습 시작하기</button>
+        <button onclick="window.showLeaderboard()" style="background-color: #feca57; font-size: 1.3em; padding: 15px 30px;">🏆 명예의 전당</button>
+    </div>
+
+    <!-- 화면 3: 읽기 연습 방 -->
+    <div id="practiceScreen" class="screen">
+        <h2 id="currentUnitTitle" style="color: #6c5ce7; font-size: 1.8em;">Unit 1</h2>
+        <div class="target-text" id="targetSentence">Loading...</div>
+        <div id="timerDisplay">준비!</div>
+        
+        <button id="recordBtn" class="record-btn" onclick="window.toggleRecording()">🎙️ 마이크 켜기</button>
+        
+        <div class="feedback" id="feedbackArea"></div>
+        <div id="practiceNavButtons" style="display: none; margin-top: 20px;">
+            <button onclick="window.startPractice()" style="background-color: #0984e3;">🔄 다시 연습하기</button>
+            <button onclick="window.showScreen('lobbyScreen')">🏠 메인으로 돌아가기</button>
+        </div>
+    </div>
+
+    <!-- 화면 4: 명예의 전당 -->
+    <div id="leaderboardScreen" class="screen">
+        <h1>🏆 명예의 전당 🏆</h1>
+        <div style="margin-bottom: 20px;">
+            <select id="leaderboardUnitSelect" onchange="window.loadLeaderboardData()" style="width: 80%; max-width: 400px;">
+                <!-- 단원 목록 동적 렌더링 -->
+            </select>
+        </div>
+        <ul class="leaderboard-list" id="leaderboardList">
+            <!-- 랭킹 데이터가 여기에 추가됩니다 -->
+        </ul>
+        <button onclick="window.showScreen('lobbyScreen')" style="margin-top: 20px;">🏠 메인으로 돌아가기</button>
+    </div>
+
+    <!-- 화면 5: 교사 로그인 -->
+    <div id="teacherLoginScreen" class="screen">
+        <h1>⚙️ 교사 설정 모드</h1>
+        <p>비밀번호를 입력하세요.</p>
+        <input type="password" id="teacherPw" placeholder="비밀번호">
+        <br>
+        <button onclick="window.teacherLogin()">확인</button>
+        <button onclick="window.showScreen('loginScreen')" style="background-color: #95a5a6;">취소</button>
+    </div>
+
+    <!-- 화면 6: 교사 대시보드 -->
+    <div id="teacherDashboardScreen" class="screen">
+        <h1>👨‍🏫 관리 대시보드</h1>
+        
+        <div class="dashboard-section">
+            <h3>🏫 기본 설정</h3>
+            <input type="text" id="settingSchoolName" placeholder="학교명 (예: 의초등학교)">
+            <input type="password" id="settingTeacherPw" placeholder="새 비밀번호 입력">
+            <button onclick="window.saveSettings()" style="background-color: #6c5ce7;">설정 저장</button>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>📝 단원 관리</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="text" id="newUnitName" placeholder="단원명 (예: Unit 1)" style="flex: 1;">
+                <input type="text" id="newUnitText" placeholder="읽기 문장 입력" style="flex: 2;">
+            </div>
+            <button onclick="window.addUnit()" style="background-color: #2ecc71; width: 100%;">+ 새 단원 추가하기</button>
+            <div id="teacherUnitList" style="margin-top: 15px;">
+                <!-- 교사용 단원 리스트 -->
+            </div>
+        </div>
+        
+        <button onclick="window.showScreen('loginScreen')" style="background-color: #e74c3c; width: 100%;">로그아웃 (메인으로)</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDRDLloeG2GCuGvPlAjeC5QW5xVcmjce8I",
+        authDomain: "reading-add85.firebaseapp.com",
+        projectId: "reading-add85",
+        storageBucket: "reading-add85.firebasestorage.app",
+        messagingSenderId: "377081797792",
+        appId: "1:377081797792:web:3efc7ce049df6955213dc5",
+        measurementId: "G-EY079V9WDL"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let useLocalMock = false; 
+    let loadedUnits = {};
+    let mockScores = [];
+    
+    // 설정값
+    let globalSchoolName = localStorage.getItem("rs_schoolName") || "";
+    let globalTeacherPw = localStorage.getItem("rs_teacherPw") || "1234";
+
+    let currentUser = {};
+    let isRecording = false;
+    let recognition;
+    let startTime;
+    let timerInterval;
+
+    window.showScreen = function(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    };
+
     // 학교명 및 초기 설정 화면 반영 함수
     function applyGlobalSettings() {
         const titleEl = document.getElementById('mainAppTitle');
         if(titleEl) {
             if (globalSchoolName) {
-                // Reading Sprint 아랫줄에 학교명을 배치하고, 폰트 크기를 줄여 세련되게 표시
-                titleEl.innerHTML = `Reading Sprint 🏃‍♂️💨<br><span style="display: inline-block; margin-top: 12px; font-size: 0.55em; color: #636e72; font-weight: 500; background-color: #f1f2f6; padding: 6px 20px; border-radius: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); letter-spacing: 1px;">${globalSchoolName}</span>`;
+                titleEl.innerHTML = `Reading Sprint 🏃‍♂️💨<br><span class="school-badge">${globalSchoolName}</span>`;
             } else {
                 titleEl.innerHTML = `Reading Sprint 🏃‍♂️💨`;
             }
@@ -18,11 +306,10 @@
         if(settingPwEl) settingPwEl.value = globalTeacherPw;
     }
 
-    // --- Firebase DB 연동: 단원 불러오기 ---
-    async function fetchUnitsFromDB() {
+    // 초기 데이터 로드
+    async function initApp() {
         applyGlobalSettings();
         try {
-            // Firebase 무한 대기(Hanging) 방지를 위한 3초 타임아웃 적용
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("DB Connection Timeout")), 3000));
             const querySnapshot = await Promise.race([getDocs(collection(db, "units")), timeout]);
             
@@ -31,7 +318,6 @@
                 loadedUnits[doc.id] = doc.data().text;
             });
             
-            // 만약 DB가 비어있다면 초기 샘플 데이터 세팅
             if(Object.keys(loadedUnits).length === 0) {
                 const defaultUnits = {
                     "Unit 1. Hello": "Hello nice to meet you.",
@@ -43,7 +329,6 @@
                 }
             }
 
-            // 설정 데이터 불러오기
             try {
                 const settingsDoc = await Promise.race([getDocs(collection(db, "settings")), timeout]);
                 settingsDoc.forEach((docItem) => {
@@ -62,7 +347,8 @@
 
         } catch (error) {
             console.warn("Firestore 연결 지연. 로컬 메모리 모드로 전환합니다:", error);
-            useLocalMock = true; // DB 대신 브라우저 메모리 사용
+            useLocalMock = true;
+            document.getElementById('banner').style.display = 'block';
             loadedUnits = JSON.parse(localStorage.getItem('rs_localUnits')) || {
                 "Unit 1. Hello": "Hello nice to meet you.",
                 "Unit 2. My Favorite Food": "My favorite food is delicious pizza."
@@ -72,109 +358,160 @@
         }
     }
 
-    // type="module" 안의 함수를 HTML의 onclick에서 쓸 수 있도록 window 객체에 바인딩
-<!-- ... existing code ... -->
-    window.teacherLogin = function() {
-        const pw = document.getElementById('teacherPw').value;
-        if(pw === globalTeacherPw) { 
-            document.getElementById('teacherPw').value = '';
-            window.showScreen('teacherDashboardScreen');
-            window.renderTeacherUnitList();
-        } else {
-            alert('비밀번호가 틀렸습니다.');
-        }
+    window.refreshUnitSelects = function() {
+        const selects = [document.getElementById('unitSelect'), document.getElementById('leaderboardUnitSelect')];
+        selects.forEach(select => {
+            if(!select) return;
+            select.innerHTML = '';
+            for (const unitName in loadedUnits) {
+                select.innerHTML += `<option value="${unitName}">${unitName}</option>`;
+            }
+        });
     };
 
-    window.saveSettings = async function() {
-        const newName = document.getElementById('settingSchoolName').value.trim();
-        const newPw = document.getElementById('settingTeacherPw').value.trim();
-        
-        if(!newPw) {
-            alert('비밀번호는 비워둘 수 없습니다!');
+    window.login = function() {
+        const grade = document.getElementById('grade').value;
+        const classNum = document.getElementById('classNum').value;
+        const studentNum = document.getElementById('studentNum').value;
+        const studentName = document.getElementById('studentName').value;
+
+        if(!grade || !classNum || !studentNum || !studentName) {
+            alert('정보를 모두 입력해주세요!');
             return;
         }
 
-        // 화면 및 로컬 스토리지에 즉시 반영 (버튼 먹통 방지)
-        globalSchoolName = newName;
-        globalTeacherPw = newPw;
-        localStorage.setItem("rs_schoolName", globalSchoolName);
-        localStorage.setItem("rs_teacherPw", globalTeacherPw);
-        
-        applyGlobalSettings();
-
-        // Firebase 백그라운드 저장
-        if(!useLocalMock) {
-            try {
-                const savePromise = setDoc(doc(db, "settings", "global"), { 
-                    schoolName: globalSchoolName, 
-                    teacherPw: globalTeacherPw 
-                });
-                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
-                await Promise.race([savePromise, timeout]);
-            } catch(e) {
-                console.warn("설정 DB 저장 지연, 로컬 모드로 전환", e);
-                useLocalMock = true;
-            }
-        }
-        alert('설정이 성공적으로 저장되었습니다!');
+        currentUser = { grade, classNum, studentNum, studentName };
+        document.getElementById('welcomeMsg').innerText = `${grade}학년 ${classNum}반 ${studentName} 친구, 환영해요!`;
+        window.showScreen('lobbyScreen');
     };
 
-    window.addUnit = async function() {
-        const name = document.getElementById('newUnitName').value.trim();
-        const text = document.getElementById('newUnitText').value.trim();
-        
-        if(!name || !text) {
-            alert('단원 이름과 문장을 모두 입력해주세요!');
-            return;
+    window.startPractice = function() {
+        const unit = document.getElementById('unitSelect').value;
+        if(!unit) {
+            alert('단원을 먼저 선택해주세요.'); return;
         }
-
-        // 1. 화면과 로컬 메모리에 즉시 반영 (낙관적 업데이트 - 무한 로딩 해결)
-        loadedUnits[name] = text;
-        localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+        document.getElementById('currentUnitTitle').innerText = unit;
+        document.getElementById('targetSentence').innerText = loadedUnits[unit] || "문장을 찾을 수 없습니다.";
+        document.getElementById('feedbackArea').innerHTML = '';
+        document.getElementById('timerDisplay').innerText = '준비!';
+        document.getElementById('practiceNavButtons').style.display = 'none';
         
-        document.getElementById('newUnitName').value = '';
-        document.getElementById('newUnitText').value = '';
-        window.renderTeacherUnitList();
-        window.refreshUnitSelects();
+        isRecording = false;
+        if(recognition) recognition.stop();
+        document.getElementById('recordBtn').innerText = "🎙️ 마이크 켜기";
+        document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
+        clearInterval(timerInterval);
 
-        // 2. Firebase 연동 시도 (백그라운드)
-        if(!useLocalMock) {
-            try {
-                const savePromise = setDoc(doc(db, "units", name), { text: text });
-                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
-                await Promise.race([savePromise, timeout]);
-            } catch (e) {
-                console.warn("DB 연결 지연. 로컬 저장 완료.");
-                useLocalMock = true;
-            }
-        }
-        alert('성공적으로 등록되었습니다!');
+        window.showScreen('practiceScreen');
     };
 
-    window.deleteUnit = async function(unitName) {
-        if(confirm(`'${unitName}' 단원을 삭제하시겠습니까?`)) {
-            // 1. 로컬 삭제 및 화면 즉시 갱신
-            delete loadedUnits[unitName];
-            localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
-            window.renderTeacherUnitList();
-            window.refreshUnitSelects();
+    function initSpeechRecognition() {
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!window.SpeechRecognition) {
+            alert("이 브라우저는 음성 인식을 지원하지 않습니다. Chrome을 사용해주세요.");
+            return null;
+        }
+        const rc = new SpeechRecognition();
+        rc.lang = 'en-US';
+        rc.interimResults = false;
+        rc.maxAlternatives = 1;
+        return rc;
+    }
 
-            // 2. Firebase 삭제 시도
-            if(!useLocalMock) {
-                try {
-                    const delPromise = deleteDoc(doc(db, "units", unitName));
-                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
-                    await Promise.race([delPromise, timeout]);
-                } catch (e) {
-                    console.warn("DB 연결 지연. 로컬 삭제 완료.");
-                    useLocalMock = true;
+    window.toggleRecording = function() {
+        if(isRecording) return;
+        
+        recognition = initSpeechRecognition();
+        if(!recognition) return;
+
+        const targetText = document.getElementById('targetSentence').innerText;
+        document.getElementById('feedbackArea').innerHTML = '';
+        document.getElementById('practiceNavButtons').style.display = 'none';
+        
+        recognition.onstart = function() {
+            isRecording = true;
+            document.getElementById('recordBtn').innerText = "🛑 듣고 있어요...";
+            document.getElementById('recordBtn').style.backgroundColor = "#e74c3c";
+            
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                document.getElementById('timerDisplay').innerText = `⏱️ ${elapsed}초`;
+            }, 100);
+        };
+
+        recognition.onspeechend = function() {
+            recognition.stop();
+        };
+
+        recognition.onresult = function(event) {
+            clearInterval(timerInterval);
+            isRecording = false;
+            document.getElementById('recordBtn').innerText = "🎙️ 다시 시도";
+            document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
+
+            const recognizedText = event.results[0][0].transcript;
+            const timeTaken = (Date.now() - startTime) / 1000;
+            
+            calculateAndShowResult(targetText, recognizedText, timeTaken);
+        };
+
+        recognition.onerror = function(event) {
+            clearInterval(timerInterval);
+            isRecording = false;
+            document.getElementById('recordBtn').innerText = "🎙️ 마이크 다시 켜기";
+            document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
+            document.getElementById('feedbackArea').innerHTML = '마이크 오류가 발생했어요. 다시 눌러주세요!';
+        };
+
+        recognition.start();
+    };
+
+    function getLevenshteinDistance(a, b) {
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+        for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
                 }
             }
         }
-    };
+        return matrix[b.length][a.length];
+    }
 
-    window.renderTeacherUnitList = function() {
-<!-- ... existing code ... -->
+    function calculateAndShowResult(target, recognized, timeTaken) {
+        const cleanTarget = target.toLowerCase().replace(/[.,!?]/g, "");
+        const cleanRecognized = recognized.toLowerCase().replace(/[.,!?]/g, "");
+        const unitName = document.getElementById('currentUnitTitle').innerText;
+
+        const distance = getLevenshteinDistance(cleanTarget, cleanRecognized);
+        const maxLength = Math.max(cleanTarget.length, cleanRecognized.length);
+        
+        let accuracy = ((maxLength - distance) / maxLength) * 100;
+        accuracy = Math.max(0, Math.round(accuracy));
+
+        const wordCount = cleanTarget.split(" ").length;
+        const targetTime = wordCount * 0.8; 
+
+        const feedbackBox = document.getElementById('feedbackArea');
+        let feedbackHTML = `<div style="margin-bottom:10px; font-size: 1.1rem; color:#555;">내가 읽은 문장:<br>"${recognized}"</div>`;
+        let finalScore = 0;
+
+        if(accuracy < 80) {
+            feedbackHTML += `<div style="color: #e74c3c; font-weight:bold; font-size:1.5rem;">정확도: ${accuracy}% 😭</div><br>아쉽네요! 발음에 조금 더 신경 써서 다시 연습해 볼까요?`;
+        } else {
+            let baseScore = accuracy; 
+            let speedBonus = 0;
+            
+            if(timeTaken < targetTime) {
+                speedBonus = Math.round((targetTime - timeTaken) * 5);
+            }
+            
+            finalScore = baseScore + speedBonus;
             
             feedbackHTML += `
                 <div style="color: #00e676; font-weight:bold; font-size:1.6rem;">정확도: ${accuracy}% 🎉 Excellent!</div>
@@ -188,7 +525,6 @@
                 <div id="saveStatus" style="font-size:0.9rem; color:#aaa; margin-top:10px;">기록 저장 중...☁️</div>
             `;
             
-            // Firebase에 점수 저장
             saveScoreToDB(unitName, finalScore, timeTaken, accuracy);
         }
 
@@ -209,7 +545,6 @@
                 time: timeTaken,
                 timestamp: useLocalMock ? Date.now() : serverTimestamp()
             };
-
             if(useLocalMock) {
                 mockScores.push(scoreData);
             } else {
@@ -237,17 +572,34 @@
     }
 
     window.showLeaderboard = function() {
-<!-- ... existing code ... -->
+        window.showScreen('leaderboardScreen');
+        const unitSelect = document.getElementById('leaderboardUnitSelect');
+        if(unitSelect.options.length > 0) {
+            window.loadLeaderboardData();
+        }
+    };
+
+    window.loadLeaderboardData = async function() {
+        const unitName = document.getElementById('leaderboardUnitSelect').value;
+        const listArea = document.getElementById('leaderboardList');
+        listArea.innerHTML = '<li style="justify-content:center;">데이터를 불러오는 중입니다... ⏳</li>';
+        
+        if(!unitName) return;
+
+        try {
+            if(useLocalMock) {
+                const filtered = mockScores.filter(s => s.unit === unitName).sort((a,b) => b.score - a.score).slice(0,10);
+                listArea.innerHTML = '';
+                if(filtered.length === 0) {
+                    listArea.innerHTML = '<li style="justify-content:center;">아직 기록이 없습니다. 첫 기록의 주인공이 되어보세요!</li>';
+                    return;
+                }
+                filtered.forEach((data, index) => {
+                    const rankStr = index === 0 ? "🥇 1위" : index === 1 ? "🥈 2위" : index === 2 ? "🥉 3위" : `${index+1}위`;
+                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name}</span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
+                });
             } else {
-                // Firestore 쿼리
-                const q = query(
-                    collection(db, "scores"), 
-                    where("unit", "==", unitName), 
-                    orderBy("score", "desc"), 
-                    limit(10)
-                );
-                
-                // 무한 대기 방지 타임아웃
+                const q = query(collection(db, "scores"), where("unit", "==", unitName), orderBy("score", "desc"), limit(10));
                 const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
                 const querySnapshot = await Promise.race([getDocs(q), timeout]);
                 
@@ -256,8 +608,133 @@
                     return;
                 }
 
+                listArea.innerHTML = '';
+                let rank = 1;
                 querySnapshot.forEach((doc) => {
-<!-- ... existing code ... -->
-```
+                    const data = doc.data();
+                    const rankStr = rank === 1 ? "🥇 1위" : rank === 2 ? "🥈 2위" : rank === 3 ? "🥉 3위" : `${rank}위`;
+                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name}</span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
+                    rank++;
+                });
+            }
+        } catch(e) {
+            console.error(e);
+            listArea.innerHTML = '<li style="justify-content:center; color:red;">랭킹을 불러오는데 실패했습니다.</li>';
+        }
+    };
 
-이제 DB 연결 상태와 무관하게 **화면은 즉시 반응**하므로, 단원을 마음껏 추가하고 삭제하며 쾌적하게 테스트해 보실 수 있습니다!
+    window.teacherLogin = function() {
+        const pw = document.getElementById('teacherPw').value;
+        if(pw === globalTeacherPw) { 
+            document.getElementById('teacherPw').value = '';
+            window.showScreen('teacherDashboardScreen');
+            window.renderTeacherUnitList();
+        } else {
+            alert('비밀번호가 틀렸습니다.');
+        }
+    };
+
+    window.saveSettings = async function() {
+        const newName = document.getElementById('settingSchoolName').value.trim();
+        const newPw = document.getElementById('settingTeacherPw').value.trim();
+        
+        if(!newPw) {
+            alert('비밀번호는 비워둘 수 없습니다!');
+            return;
+        }
+
+        globalSchoolName = newName;
+        globalTeacherPw = newPw;
+        localStorage.setItem("rs_schoolName", globalSchoolName);
+        localStorage.setItem("rs_teacherPw", globalTeacherPw);
+        
+        applyGlobalSettings();
+
+        if(!useLocalMock) {
+            try {
+                const savePromise = setDoc(doc(db, "settings", "global"), { 
+                    schoolName: globalSchoolName, 
+                    teacherPw: globalTeacherPw 
+                });
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                await Promise.race([savePromise, timeout]);
+            } catch(e) {
+                console.warn("설정 DB 저장 지연, 로컬 모드로 전환", e);
+                useLocalMock = true;
+            }
+        }
+        alert('설정이 성공적으로 저장되었습니다!');
+    };
+
+    window.addUnit = async function() {
+        const name = document.getElementById('newUnitName').value.trim();
+        const text = document.getElementById('newUnitText').value.trim();
+        
+        if(!name || !text) {
+            alert('단원 이름과 문장을 모두 입력해주세요!');
+            return;
+        }
+
+        loadedUnits[name] = text;
+        localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+        
+        document.getElementById('newUnitName').value = '';
+        document.getElementById('newUnitText').value = '';
+        window.renderTeacherUnitList();
+        window.refreshUnitSelects();
+
+        if(!useLocalMock) {
+            try {
+                const savePromise = setDoc(doc(db, "units", name), { text: text });
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                await Promise.race([savePromise, timeout]);
+            } catch (e) {
+                console.warn("DB 연결 지연. 로컬 저장 완료.");
+                useLocalMock = true;
+            }
+        }
+        alert('성공적으로 등록되었습니다!');
+    };
+
+    window.deleteUnit = async function(unitName) {
+        if(confirm(`'${unitName}' 단원을 삭제하시겠습니까?`)) {
+            delete loadedUnits[unitName];
+            localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+            window.renderTeacherUnitList();
+            window.refreshUnitSelects();
+
+            if(!useLocalMock) {
+                try {
+                    const delPromise = deleteDoc(doc(db, "units", unitName));
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                    await Promise.race([delPromise, timeout]);
+                } catch (e) {
+                    console.warn("DB 연결 지연. 로컬 삭제 완료.");
+                    useLocalMock = true;
+                }
+            }
+        }
+    };
+
+    window.renderTeacherUnitList = function() {
+        const listArea = document.getElementById('teacherUnitList');
+        listArea.innerHTML = '';
+        for (const [name, text] of Object.entries(loadedUnits)) {
+            listArea.innerHTML += `
+                <div class="unit-list-item">
+                    <div style="flex:1;">
+                        <b>${name}</b><br>
+                        <span style="font-size: 0.9em; color:#7f8c8d;">${text}</span>
+                    </div>
+                    <button class="delete-btn" onclick="window.deleteUnit('${name}')">삭제</button>
+                </div>
+            `;
+        }
+    };
+
+    // 앱 시작
+    initApp();
+
+</script>
+</body>
+</html>
