@@ -181,7 +181,7 @@
 <body>
 
 <div class="container">
-    <h1 class="title-logo">Reading Sprint</h1>
+    <h1 class="title-logo" id="mainAppTitle">Reading Sprint</h1>
 
     <!-- 화면 0: 모드 선택 (학생/교사) -->
     <div id="roleScreen" class="screen active">
@@ -197,7 +197,19 @@
         <h2>내 정보 입력</h2>
         <div class="flex-row">
             <select id="grade"><option value="">학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option></select>
-            <select id="classNum"><option value="">반</option><option value="1">1반</option><option value="2">2반</option><option value="3">3반</option></select>
+            <select id="classNum">
+                <option value="">반</option>
+                <option value="1">1반</option>
+                <option value="2">2반</option>
+                <option value="3">3반</option>
+                <option value="4">4반</option>
+                <option value="5">5반</option>
+                <option value="6">6반</option>
+                <option value="7">7반</option>
+                <option value="8">8반</option>
+                <option value="9">9반</option>
+                <option value="10">10반</option>
+            </select>
             <input type="number" id="studentNum" placeholder="번호" style="width: 100px;">
         </div>
         <div class="flex-row">
@@ -212,8 +224,8 @@
     <!-- 화면 1-2: 교사 로그인 -->
     <div id="teacherLoginScreen" class="screen">
         <h2>교사 인증</h2>
-        <p style="color: #aaa; font-size: 0.9em;">(테스트용 비밀번호: admin)</p>
-        <input type="password" id="teacherPw" placeholder="비밀번호" style="width: 250px;">
+        <p style="color: #aaa; font-size: 0.9em;" id="pwHint">(초기 비밀번호: admin)</p>
+        <input type="password" id="teacherPw" placeholder="비밀번호" style="width: 250px;" onkeypress="if(event.key==='Enter') window.teacherLogin()">
         <div class="flex-row" style="margin-top: 20px;">
             <button class="btn-outline" onclick="showScreen('roleScreen')">뒤로</button>
             <button class="btn-glow" onclick="teacherLogin()">관리자 로그인</button>
@@ -225,6 +237,16 @@
         <h2>⚙️ 교사 관리 대시보드</h2>
         
         <div class="dashboard-grid">
+            <!-- 앱 설정 섹션 -->
+            <div class="dashboard-card" style="border-color: var(--primary); background: rgba(0, 242, 254, 0.05);">
+                <h3 style="color: var(--primary);">기본 설정 (학교명 / 비밀번호)</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <input type="text" id="settingSchoolName" placeholder="학교명 (예: 행복초등)" style="flex: 1; min-width: 150px;">
+                    <input type="text" id="settingTeacherPw" placeholder="새 비밀번호" style="flex: 1; min-width: 150px;">
+                </div>
+                <button class="btn-glow" onclick="saveSettings()" style="width: 100%; padding: 10px; margin: 0;">💾 설정 저장</button>
+            </div>
+
             <!-- 단원 추가 섹션 -->
             <div class="dashboard-card">
                 <h3>새로운 단원 만들기</h3>
@@ -295,7 +317,7 @@
 <!-- Firebase를 위한 모듈 타입 스크립트로 변경 -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, addDoc, query, where, orderBy, limit, serverTimestamp, disableNetwork } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, addDoc, query, where, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // 사용자 제공 Firebase 설정
     const firebaseConfig = {
@@ -321,32 +343,29 @@
     let useLocalMock = false; // Firestore 연결 실패 시 로컬 모드로 전환
     let mockScores = []; // 로컬 모드용 점수 저장 배열
 
-    // 오류 배너 표시 함수
-    function showErrorBanner() {
-        const banner = document.createElement('div');
-        banner.style.cssText = "background: #ff4757; color: white; padding: 15px; text-align: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.1);";
-        banner.innerHTML = `
-            <div style="font-family: 'Pretendard', sans-serif;">
-                <strong>⚠️ 클라우드 데이터베이스(Firestore) API가 비활성화되어 있습니다.</strong><br>
-                <span style="font-size: 0.9em; opacity: 0.9;">현재 임시 로컬 모드로 작동 중입니다. 새로고침 시 데이터가 초기화됩니다. 정상적인 사용을 위해 아래 링크에서 API를 사용 설정해 주세요.</span><br>
-                <a href="https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=reading-add85" target="_blank" style="display: inline-block; margin-top: 10px; background: white; color: #ff4757; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 0.9em;">
-                    🔥 Firestore API 활성화하러 가기
-                </a>
-                <button onclick="this.parentElement.parentElement.remove()" style="margin-left: 10px; background: transparent; border: 1px solid white; color: white; padding: 7px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em;">닫기</button>
-            </div>
-        `;
-        document.body.prepend(banner);
+    // 전역 설정 변수
+    let globalSchoolName = localStorage.getItem("rs_schoolName") || "";
+    let globalTeacherPw = localStorage.getItem("rs_teacherPw") || "admin";
+
+    // 학교명 및 초기 설정 화면 반영 함수
+    function applyGlobalSettings() {
+        const titleEl = document.getElementById('mainAppTitle');
+        if(titleEl) {
+            titleEl.innerText = globalSchoolName ? `${globalSchoolName} Reading Sprint` : "Reading Sprint";
+        }
+        document.title = globalSchoolName ? `${globalSchoolName} Reading Sprint` : "Reading Sprint 🏃‍♂️💨";
+        
+        const settingNameEl = document.getElementById('settingSchoolName');
+        const settingPwEl = document.getElementById('settingTeacherPw');
+        if(settingNameEl) settingNameEl.value = globalSchoolName;
+        if(settingPwEl) settingPwEl.value = globalTeacherPw;
     }
 
     // --- Firebase DB 연동: 단원 불러오기 ---
     async function fetchUnitsFromDB() {
+        applyGlobalSettings();
         try {
-            // 무한 대기 방지를 위한 타임아웃(3초) 적용
-            const fetchPromise = getDocs(collection(db, "units"));
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
-            
-            const querySnapshot = await Promise.race([fetchPromise, timeoutPromise]);
-            
+            const querySnapshot = await getDocs(collection(db, "units"));
             loadedUnits = {};
             querySnapshot.forEach((doc) => {
                 loadedUnits[doc.id] = doc.data().text;
@@ -363,17 +382,28 @@
                     loadedUnits[name] = text;
                 }
             }
-        } catch (error) {
-            console.warn("Firestore 연결 실패. 백그라운드 재시도를 중지하고 로컬 메모리 모드로 전환합니다.");
-            useLocalMock = true; // DB 대신 브라우저 메모리 사용
-            
-            // Firebase가 계속 연결을 재시도하면서 콘솔에 에러를 뿜는 것을 방지
-            try { await disableNetwork(db); } catch(e) {}
-            
-            // 선생님이 클릭하기 쉽게 화면 상단에 배너 띄우기
-            showErrorBanner();
 
-            loadedUnits = {
+            // 설정 데이터 불러오기
+            try {
+                const settingsDoc = await getDocs(collection(db, "settings"));
+                settingsDoc.forEach((docItem) => {
+                    if(docItem.id === "global") {
+                        const data = docItem.data();
+                        if(data.schoolName !== undefined) globalSchoolName = data.schoolName;
+                        if(data.teacherPw !== undefined) globalTeacherPw = data.teacherPw;
+                        localStorage.setItem("rs_schoolName", globalSchoolName);
+                        localStorage.setItem("rs_teacherPw", globalTeacherPw);
+                        applyGlobalSettings();
+                    }
+                });
+            } catch (e) {
+                console.warn("설정 문서 가져오기 실패", e);
+            }
+
+        } catch (error) {
+            console.warn("Firestore 연결 실패. 로컬 메모리 모드로 전환합니다:", error);
+            useLocalMock = true; // DB 대신 브라우저 메모리 사용
+            loadedUnits = JSON.parse(localStorage.getItem('rs_localUnits')) || {
                 "Unit 1. Hello": "Hello nice to meet you.",
                 "Unit 2. My Favorite Food": "My favorite food is delicious pizza."
             };
@@ -412,12 +442,42 @@
 
     window.teacherLogin = function() {
         const pw = document.getElementById('teacherPw').value;
-        if(pw === 'admin') { 
+        if(pw === globalTeacherPw) { 
             document.getElementById('teacherPw').value = '';
             window.showScreen('teacherDashboardScreen');
             window.renderTeacherUnitList();
         } else {
             alert('비밀번호가 틀렸습니다.');
+        }
+    };
+
+    window.saveSettings = async function() {
+        const newName = document.getElementById('settingSchoolName').value.trim();
+        const newPw = document.getElementById('settingTeacherPw').value.trim();
+        
+        if(!newPw) {
+            alert('비밀번호는 비워둘 수 없습니다!');
+            return;
+        }
+
+        globalSchoolName = newName;
+        globalTeacherPw = newPw;
+        localStorage.setItem("rs_schoolName", globalSchoolName);
+        localStorage.setItem("rs_teacherPw", globalTeacherPw);
+        
+        applyGlobalSettings();
+
+        try {
+            if(!useLocalMock) {
+                await setDoc(doc(db, "settings", "global"), { 
+                    schoolName: globalSchoolName, 
+                    teacherPw: globalTeacherPw 
+                });
+            }
+            alert('설정이 성공적으로 저장되었습니다!');
+        } catch(e) {
+            console.error("설정 저장 오류", e);
+            alert('로컬에 설정이 저장되었습니다. (DB 연결 안됨)');
         }
     };
 
@@ -433,6 +493,7 @@
         try {
             if(useLocalMock) {
                 loadedUnits[name] = text;
+                localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
             } else {
                 await setDoc(doc(db, "units", name), { text: text });
                 loadedUnits[name] = text;
@@ -441,9 +502,10 @@
             document.getElementById('newUnitName').value = '';
             document.getElementById('newUnitText').value = '';
             window.renderTeacherUnitList();
+            window.refreshUnitSelects();
             alert('성공적으로 등록되었습니다!');
         } catch (e) {
-            console.error(e);
+            console.error("단원 추가 에러:", e);
             alert('단원 추가 중 오류가 발생했습니다.');
         }
     };
@@ -453,13 +515,15 @@
             try {
                 if(useLocalMock) {
                     delete loadedUnits[unitName];
+                    localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
                 } else {
                     await deleteDoc(doc(db, "units", unitName));
                     delete loadedUnits[unitName];
                 }
                 window.renderTeacherUnitList();
+                window.refreshUnitSelects();
             } catch (e) {
-                console.error(e);
+                console.error("단원 삭제 에러:", e);
                 alert('단원 삭제 중 오류가 발생했습니다.');
             }
         }
