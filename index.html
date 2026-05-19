@@ -32,7 +32,7 @@
         .screen { display: none; }
         .screen.active { display: block; }
         
-        input, select, button {
+        input, select, button, textarea {
             font-family: 'Jua', sans-serif;
             font-size: 1.2em;
             padding: 10px;
@@ -279,17 +279,23 @@
 
         <div class="dashboard-section">
             <h3>📝 단원 및 문장 관리</h3>
-            <div style="background-color: white; padding: 15px; border-radius: 10px; border: 2px dashed #b2bec3; margin-bottom: 15px;">
-                <p style="margin-top:0; color:#2d3436; font-size:0.9em;">* 여러 문장을 한 번에 등록하려면 <b>엔터(줄바꿈)</b>로 구분해서 입력하세요.</p>
+            
+            <!-- 변경된 부분: 저장된 목록을 위로 올려 즉시 보이게 함 -->
+            <div id="teacherUnitList" style="margin-bottom: 25px; max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                <!-- 교사용 단원/문장 리스트 -->
+            </div>
+
+            <div style="background-color: white; padding: 20px; border-radius: 10px; border: 2px dashed #0984e3;">
+                <h4 style="margin-top:0; color:#0984e3; font-size:1.2em;">➕ 새 단원/문장 추가하기</h4>
+                <p style="margin-top:0; color:#2d3436; font-size:0.9em;">* 빈칸을 클릭해 <b>기존 단원</b>을 선택하거나 <b>새 단원명</b>을 입력하세요.<br>* 여러 문장을 한 번에 등록하려면 <b>엔터(줄바꿈)</b>로 구분해서 입력하세요.</p>
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;">
-                    <input type="text" id="newUnitName" placeholder="단원명 (예: Unit 1)">
+                    <!-- 단원명 드롭다운 (datalist) 추가 -->
+                    <input type="text" id="newUnitName" placeholder="단원명 직접 입력 또는 화살표 눌러 선택" list="existingUnitsList" style="width: 100%; box-sizing: border-box;">
+                    <datalist id="existingUnitsList"></datalist>
+                    
                     <textarea id="newUnitText" placeholder="읽기 문장 입력 (줄바꿈으로 여러 문장 동시 입력 가능)&#10;예:&#10;Hello, nice to meet you.&#10;How are you today?" style="width: 100%; box-sizing: border-box; padding: 10px; font-family: 'Jua', sans-serif; font-size: 1.1em; border-radius: 10px; border: 2px solid #ddd; resize: vertical; min-height: 100px;"></textarea>
                 </div>
-                <button onclick="window.addUnitSentence()" style="background-color: #2ecc71; width: 100%;">+ 단원/문장 추가 및 자동 저장</button>
-            </div>
-            
-            <div id="teacherUnitList" style="margin-top: 15px;">
-                <!-- 교사용 단원/문장 리스트 -->
+                <button onclick="window.addUnitSentence()" style="background-color: #2ecc71; width: 100%; font-size:1.3em;">+ 단원/문장 추가 및 자동 저장</button>
             </div>
         </div>
         
@@ -335,6 +341,10 @@
     window.showScreen = function(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
+        // 교사 대시보드 진입 시 리스트를 최신화
+        if(screenId === 'teacherDashboardScreen') {
+            window.renderTeacherUnitList();
+        }
     };
 
     function applyGlobalSettings() {
@@ -427,6 +437,9 @@
             document.getElementById('teacherStatusUnitSelect')
         ];
         
+        const dataList = document.getElementById('existingUnitsList');
+        if(dataList) dataList.innerHTML = '';
+        
         selects.forEach((select, index) => {
             if(!select) return;
             // 교사 현황 조회 드롭다운은 '전체' 옵션 유지
@@ -440,6 +453,18 @@
                 select.innerHTML += `<option value="${unitName}">${unitName}</option>`;
             }
         });
+        
+        // 단원 추가 시 사용할 자동완성 목록 구성
+        if(dataList) {
+            for (const unitName in loadedUnits) {
+                dataList.innerHTML += `<option value="${unitName}">`;
+            }
+        }
+        
+        // 데이터가 뒤늦게 불러와져도 교사 대시보드가 열려있으면 즉시 목록을 재렌더링
+        if (document.getElementById('teacherDashboardScreen').classList.contains('active')) {
+            window.renderTeacherUnitList();
+        }
     };
 
     window.login = function() {
@@ -757,7 +782,6 @@
         if(pw === globalTeacherPw) { 
             document.getElementById('teacherPw').value = '';
             window.showScreen('teacherDashboardScreen');
-            window.renderTeacherUnitList();
         } else {
             alert('비밀번호가 틀렸습니다.');
         }
@@ -917,10 +941,19 @@
     // 교사 단원/문장 리스트 렌더링
     window.renderTeacherUnitList = function() {
         const listArea = document.getElementById('teacherUnitList');
-        listArea.innerHTML = '';
+        if(!listArea) return;
+        
+        listArea.innerHTML = '<h4 style="margin-top:0; color:#2d3436; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📚 등록된 단원 목록</h4>';
+        
+        if(Object.keys(loadedUnits).length === 0) {
+            listArea.innerHTML += '<div style="text-align:center; padding:15px; color:#7f8c8d;">등록된 단원이 없습니다. 하단에서 단원을 추가해 주세요.</div>';
+            return;
+        }
+
         for (const [name, textsArray] of Object.entries(loadedUnits)) {
+            const safeTexts = Array.isArray(textsArray) ? textsArray : [textsArray];
             
-            let sentencesHTML = textsArray.map((text, idx) => `
+            let sentencesHTML = safeTexts.map((text, idx) => `
                 <div style="display:flex; justify-content:space-between; align-items:center; background-color:#f8f9fa; padding:8px 12px; margin-top:5px; border-radius:5px;">
                     <span style="font-size:0.9em; color:#555; text-align:left;">${idx + 1}. ${text}</span>
                     <button class="delete-btn" style="padding: 4px 8px; font-size: 0.8em;" onclick="window.deleteSentence('${name}', ${idx})">삭제</button>
@@ -930,7 +963,7 @@
             listArea.innerHTML += `
                 <div class="unit-list-item">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                        <b style="font-size: 1.2em; color: #2d3436;">${name} <span style="font-size:0.7em; color:#0984e3;">(총 ${textsArray.length}문장)</span></b>
+                        <b style="font-size: 1.2em; color: #2d3436;">${name} <span style="font-size:0.7em; color:#0984e3;">(총 ${safeTexts.length}문장)</span></b>
                         <button class="delete-btn" style="background-color: #d63031;" onclick="window.deleteUnit('${name}')">단원 전체 삭제</button>
                     </div>
                     <div>
