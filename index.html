@@ -83,7 +83,7 @@
                     <option value="9">9반</option><option value="10">10반</option>
                 </select>
                 <input type="number" id="studentNum" placeholder="번호" class="p-3 border-2 border-gray-200 rounded-xl text-lg w-24 focus:outline-none focus:border-red-400 bg-white">
-                <input type="text" id="studentName" placeholder="이름" class="p-3 border-2 border-gray-200 rounded-xl text-lg w-32 focus:outline-none focus:border-red-400 bg-white">
+                <input type="text" id="studentName" placeholder="이름" style="ime-mode: active;" class="p-3 border-2 border-gray-200 rounded-xl text-lg w-32 focus:outline-none focus:border-red-400 bg-white">
             </div>
             
             <div class="mt-8 flex flex-col items-center gap-4">
@@ -504,10 +504,22 @@
             const grade = document.getElementById('grade').value;
             const classNum = document.getElementById('classNum').value;
             const studentNum = document.getElementById('studentNum').value;
-            const studentName = document.getElementById('studentName').value;
+            const studentName = document.getElementById('studentName').value.trim();
 
             if(!grade || !classNum || !studentNum || !studentName) {
                 window.showToast('학번과 이름을 모두 입력해주세요!', 'error');
+                return;
+            }
+
+            // 욕설 및 금기어 필터링 (공백 제거 후 검사)
+            const bannedWords = ['시발', '씨발', '병신', '개새', '존나', '좆', '애미', '애비', '느금마', '지랄', '미친', '새끼', '바보', '멍청이', '썅', '죽어', '뒤져', '또라이'];
+            const nameWithoutSpace = studentName.replace(/\s/g, '');
+            const hasProfanity = bannedWords.some(word => nameWithoutSpace.includes(word));
+            
+            if (hasProfanity) {
+                window.showToast('바르고 고운 이름을 사용해주세요! 🚫', 'error');
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentName').focus();
                 return;
             }
 
