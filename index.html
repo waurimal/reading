@@ -356,29 +356,42 @@
 
     async function initApp() {
         applyGlobalSettings();
+        
+        // 1. 유실 방지를 위해 로컬 스토리지 데이터를 먼저 최우선으로 불러옵니다.
+        let localUnits = JSON.parse(localStorage.getItem('rs_localUnits'));
+        if (localUnits && Object.keys(localUnits).length > 0) {
+            loadedUnits = localUnits;
+        } else {
+            loadedUnits = {
+                "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
+                "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
+            };
+            localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+        }
+
         try {
+            // 2. Firebase 최신 데이터 불러오기 시도
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("DB Connection Timeout")), 3000));
             const querySnapshot = await Promise.race([getDocs(collection(db, "units")), timeout]);
             
-            loadedUnits = {};
+            let firebaseUnits = {};
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                // 기존 문자열 형식(text)과 배열 형식(texts) 모두 대응 (하위 호환)
                 if (data.texts && Array.isArray(data.texts)) {
-                    loadedUnits[doc.id] = data.texts;
+                    firebaseUnits[doc.id] = data.texts;
                 } else if (data.text) {
-                    loadedUnits[doc.id] = [data.text];
+                    firebaseUnits[doc.id] = [data.text];
                 }
             });
             
-            if(Object.keys(loadedUnits).length === 0) {
-                const defaultUnits = {
-                    "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
-                    "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
-                };
-                for (const [name, textsArray] of Object.entries(defaultUnits)) {
-                    Promise.race([setDoc(doc(db, "units", name), { texts: textsArray }), timeout]).catch(e => {});
-                    loadedUnits[name] = textsArray;
+            // Firebase에 데이터가 정상적으로 있다면 동기화 
+            if (Object.keys(firebaseUnits).length > 0) {
+                loadedUnits = firebaseUnits;
+                localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+            } else {
+                // Firebase가 텅 비어있다면 (최초 세팅이거나 에러) 내 컴퓨터(로컬)의 데이터를 Firebase로 복구!
+                for (const [name, textsArray] of Object.entries(loadedUnits)) {
+                    setDoc(doc(db, "units", name), { texts: textsArray }).catch(e => {});
                 }
             }
 
@@ -402,10 +415,6 @@
             console.warn("Firestore 연결 지연. 로컬 메모리 모드로 전환합니다:", error);
             useLocalMock = true;
             document.getElementById('banner').style.display = 'block';
-            loadedUnits = JSON.parse(localStorage.getItem('rs_localUnits')) || {
-                "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
-                "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
-            };
         } finally {
             window.refreshUnitSelects();
         }
