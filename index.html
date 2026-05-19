@@ -501,8 +501,15 @@
         return rc;
     }
 
+    // 마이크 켜기 및 완료 토글 기능 수정 (수동 완료 추가)
     window.toggleRecording = function() {
-        if(isRecording) return;
+        if(isRecording) {
+            // 이미 녹음 중일 때 한 번 더 누르면 수동으로 녹음 종료 및 평가(제출)
+            if(recognition) {
+                recognition.stop(); 
+            }
+            return;
+        }
         
         recognition = initSpeechRecognition();
         if(!recognition) return;
@@ -513,7 +520,8 @@
         
         recognition.onstart = function() {
             isRecording = true;
-            document.getElementById('recordBtn').innerText = "🛑 듣고 있어요...";
+            // 안내 텍스트 변경: 누르면 제출된다는 것을 인지시킴
+            document.getElementById('recordBtn').innerText = "🛑 다 읽었어요! (제출)";
             document.getElementById('recordBtn').style.backgroundColor = "#e74c3c";
             
             startTime = Date.now();
@@ -524,6 +532,7 @@
         };
 
         recognition.onspeechend = function() {
+            // 발화가 끝난 것을 감지하면 자동 중지
             recognition.stop();
         };
 
@@ -544,7 +553,24 @@
             isRecording = false;
             document.getElementById('recordBtn').innerText = "🎙️ 마이크 다시 켜기";
             document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
-            document.getElementById('feedbackArea').innerHTML = '마이크 오류가 발생했어요. 다시 눌러주세요!';
+            if (event.error === 'no-speech') {
+                 document.getElementById('feedbackArea').innerHTML = '<span style="color:#e74c3c;">목소리가 들리지 않았어요. 버튼을 누르고 다시 크게 말해주세요!</span>';
+            } else {
+                 document.getElementById('feedbackArea').innerHTML = '<span style="color:#e74c3c;">마이크 오류가 발생했어요. 다시 눌러주세요! (' + event.error + ')</span>';
+            }
+        };
+        
+        recognition.onend = function() {
+            // onresult가 호출되지 않고 강제로 끝났을 경우의 안전장치
+            if(isRecording) {
+                clearInterval(timerInterval);
+                isRecording = false;
+                document.getElementById('recordBtn').innerText = "🎙️ 다시 시도";
+                document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
+                if (document.getElementById('feedbackArea').innerHTML === '') {
+                    document.getElementById('feedbackArea').innerHTML = '<span style="color:#e74c3c;">음성 인식이 정상적으로 완료되지 않았습니다. 버튼을 다시 눌러주세요.</span>';
+                }
+            }
         };
 
         recognition.start();
