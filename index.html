@@ -219,7 +219,20 @@
                     <select id="teacherStatusUnitSelect" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-400 bg-white">
                         <option value="ALL">전체 단원 보기</option>
                     </select>
-                    <button onclick="window.loadStudentStatus()" class="bg-blue-500 text-white px-6 py-3 rounded-lg btn-animated hover:bg-blue-600 whitespace-nowrap">조회하기</button>
+                    <select id="teacherStatusGradeSelect" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-400 bg-white">
+                        <option value="ALL">전체 학년</option>
+                        <option value="3">3학년</option><option value="4">4학년</option>
+                        <option value="5">5학년</option><option value="6">6학년</option>
+                    </select>
+                    <select id="teacherStatusClassSelect" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-400 bg-white">
+                        <option value="ALL">전체 반</option>
+                        <option value="1">1반</option><option value="2">2반</option>
+                        <option value="3">3반</option><option value="4">4반</option>
+                        <option value="5">5반</option><option value="6">6반</option>
+                        <option value="7">7반</option><option value="8">8반</option>
+                        <option value="9">9반</option><option value="10">10반</option>
+                    </select>
+                    <button onclick="window.loadStudentStatus()" class="bg-blue-500 text-white px-6 py-3 rounded-lg btn-animated hover:bg-blue-600 whitespace-nowrap">조회</button>
                 </div>
                 <div class="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-white">
                     <table class="w-full text-sm text-center border-collapse">
@@ -231,10 +244,11 @@
                                 <th class="p-3 border-b">정확도</th>
                                 <th class="p-3 border-b">점수</th>
                                 <th class="p-3 border-b hidden sm:table-cell">일시</th>
+                                <th class="p-3 border-b">관리</th>
                             </tr>
                         </thead>
                         <tbody id="studentStatusTableBody" class="divide-y divide-gray-100">
-                            <tr><td colspan="6" class="p-8 text-gray-500">조회하기 버튼을 눌러주세요.</td></tr>
+                            <tr><td colspan="7" class="p-8 text-gray-500">조회 버튼을 눌러주세요.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1119,38 +1133,50 @@
 
         window.loadStudentStatus = async function() {
             const unitFilter = document.getElementById('teacherStatusUnitSelect').value;
+            const gradeFilter = document.getElementById('teacherStatusGradeSelect').value;
+            const classFilter = document.getElementById('teacherStatusClassSelect').value;
             const tbody = document.getElementById('studentStatusTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-gray-500">데이터를 불러오는 중입니다... ⏳</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-gray-500">데이터를 불러오는 중입니다... ⏳</td></tr>';
 
             try {
                 let fetchedScores = [];
                 
                 if(useLocalMock) {
-                    fetchedScores = mockScores;
-                    if(unitFilter !== "ALL") {
-                        fetchedScores = fetchedScores.filter(s => s.baseUnit === unitFilter);
-                    }
-                    fetchedScores.sort((a,b) => b.timestamp - a.timestamp);
+                    fetchedScores = mockScores.map((s, idx) => ({ id: 'mock_' + idx, _mockIdx: idx, ...s }));
                 } else {
-                    // 선생님 원본 코드 복구: orderBy 및 where 그대로 복원
                     let q;
                     if(unitFilter === "ALL") {
-                        q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(50));
+                        q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(200));
                     } else {
-                        q = query(collection(db, "scores"), where("baseUnit", "==", unitFilter), orderBy("timestamp", "desc"), limit(50));
+                        q = query(collection(db, "scores"), where("baseUnit", "==", unitFilter), orderBy("timestamp", "desc"), limit(200));
                     }
                     
                     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000));
                     const querySnapshot = await Promise.race([getDocs(q), timeout]);
                     
                     querySnapshot.forEach(doc => {
-                        fetchedScores.push(doc.data());
+                        fetchedScores.push({ id: doc.id, ...doc.data() });
                     });
+                }
+
+                // 메모리상에서 필터링 적용 (복잡한 복합 인덱스 오류 방지)
+                if(unitFilter !== "ALL") {
+                    fetchedScores = fetchedScores.filter(s => s.baseUnit === unitFilter);
+                }
+                if(gradeFilter !== "ALL") {
+                    fetchedScores = fetchedScores.filter(s => String(s.grade) === String(gradeFilter));
+                }
+                if(classFilter !== "ALL") {
+                    fetchedScores = fetchedScores.filter(s => String(s.classNum) === String(classFilter));
+                }
+
+                if(useLocalMock) {
+                    fetchedScores.sort((a,b) => b.timestamp - a.timestamp);
                 }
                 
                 tbody.innerHTML = '';
                 if(fetchedScores.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-gray-500">조회된 학생 학습 기록이 없습니다.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-gray-500">조회된 학생 학습 기록이 없습니다.</td></tr>';
                     return;
                 }
                 
@@ -1172,13 +1198,40 @@
                             <td class="p-3 font-bold ${accuracyColor}">${data.accuracy}%</td>
                             <td class="p-3 font-bold text-orange-500">${data.score}</td>
                             <td class="p-3 text-xs text-gray-400 hidden sm:table-cell">${dateStr}</td>
+                            <td class="p-3">
+                                <button onclick="window.deleteScoreRecord('${data.id}', ${data._mockIdx !== undefined ? data._mockIdx : 'null'})" class="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded transition-colors shadow-sm">삭제</button>
+                            </td>
                         </tr>
                     `;
                 });
             } catch (e) {
                 console.error("현황 조회 에러:", e);
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-red-500">데이터를 불러오는 데 실패했습니다. 네트워크를 확인해주세요.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-red-500">데이터를 불러오는 데 실패했습니다. 네트워크를 확인해주세요.</td></tr>';
             }
+        };
+
+        window.deleteScoreRecord = function(docId, mockIdx) {
+            window.showConfirm("해당 학생의 학습 기록을 삭제하시겠습니까?", async () => {
+                if (useLocalMock) {
+                    if (mockIdx !== null && mockIdx !== undefined) {
+                        mockScores.splice(mockIdx, 1);
+                        localStorage.setItem('rs_localScores', JSON.stringify(mockScores));
+                        window.showToast("기록이 삭제되었습니다.", "success");
+                        window.loadStudentStatus();
+                    }
+                } else {
+                    try {
+                        const delPromise = deleteDoc(doc(db, "scores", docId));
+                        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                        await Promise.race([delPromise, timeout]);
+                        window.showToast("기록이 삭제되었습니다.", "success");
+                        window.loadStudentStatus();
+                    } catch (e) {
+                        console.error("삭제 에러:", e);
+                        window.showToast("삭제에 실패했습니다. 다시 시도해주세요.", "error");
+                    }
+                }
+            });
         };
 
         // 앱 시작 호출
