@@ -14,9 +14,11 @@
             margin: 0;
             padding: 20px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            box-sizing: border-box;
         }
         .container {
             background-color: white;
@@ -146,6 +148,14 @@
             text-align: center;
         }
         .status-table th { background-color: #ffeaa7; }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -301,6 +311,11 @@
         
         <button onclick="window.showScreen('loginScreen')" style="background-color: #e74c3c; width: 100%;">로그아웃 (메인으로)</button>
     </div>
+</div>
+
+<div class="footer">
+    만든이: 곽현석(이의초등학교)<br>
+    Copyright &copy; 2026 Eui Elementary School. All Rights Reserved.
 </div>
 
 <script type="module">
