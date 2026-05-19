@@ -57,7 +57,7 @@
     <!-- 메인 컨테이너 -->
     <div class="bg-white rounded-3xl shadow-xl p-6 sm:p-10 w-full max-w-3xl text-center relative border border-gray-100">
         <!-- 교사 설정 버튼 -->
-        <button onclick="window.showScreen('teacherLoginScreen')" class="absolute top-4 right-4 bg-gray-200 text-gray-600 hover:bg-gray-300 text-sm px-3 py-1 rounded-full btn-animated">⚙️ 교사 설정</button>
+        <button id="teacherSettingsBtn" onclick="window.showScreen('teacherLoginScreen')" class="absolute top-4 right-4 bg-gray-200 text-gray-600 hover:bg-gray-300 text-sm px-3 py-1 rounded-full btn-animated z-10">⚙️ 교사 설정</button>
         
         <!-- 오프라인/상태 배너 -->
         <div id="banner" class="hidden bg-orange-400 text-white text-sm py-2 px-4 rounded-xl mb-6 shadow-sm">
@@ -350,6 +350,17 @@
             });
             const target = document.getElementById(screenId);
             if(target) target.classList.add('active');
+            
+            // 교사 설정 및 대시보드 화면에서는 우측 상단 톱니바퀴 버튼 숨김
+            const teacherBtn = document.getElementById('teacherSettingsBtn');
+            if(teacherBtn) {
+                if(screenId === 'teacherDashboardScreen' || screenId === 'teacherLoginScreen') {
+                    teacherBtn.classList.add('hidden');
+                } else {
+                    teacherBtn.classList.remove('hidden');
+                }
+            }
+
             if(screenId === 'teacherDashboardScreen') {
                 window.renderTeacherUnitList();
             }
@@ -704,12 +715,18 @@
             const cleanTarget = normalizeTextForComparison(target);
             const cleanRecognized = normalizeTextForComparison(recognized);
 
-            const distance = getLevenshteinDistance(cleanTarget, cleanRecognized);
-            const maxLength = Math.max(cleanTarget.length, cleanRecognized.length);
+            // 띄어쓰기를 완전히 무시하기 위해 공백을 모두 제거한 문자열 생성
+            const targetNoSpace = cleanTarget.replace(/\s+/g, "");
+            const recognizedNoSpace = cleanRecognized.replace(/\s+/g, "");
+
+            // 공백이 제거된 문자열을 기준으로 레벤슈타인 거리 측정
+            const distance = getLevenshteinDistance(targetNoSpace, recognizedNoSpace);
+            const maxLength = Math.max(targetNoSpace.length, recognizedNoSpace.length);
             
             let accuracy = maxLength === 0 ? 0 : ((maxLength - distance) / maxLength) * 100;
             accuracy = Math.max(0, Math.round(accuracy));
 
+            // 목표 시간 산정을 위한 단어 수 계산은 공백이 유지된 원본(cleanTarget) 기준 적용
             const wordCount = cleanTarget.split(" ").filter(w => w.length > 0).length || 1;
             const targetTime = wordCount * 0.8; 
 
@@ -965,7 +982,7 @@
             const newPw = document.getElementById('settingTeacherPw').value.trim();
             
             if(!newPw) {
-                window.showToast('비밀번호는 비워둘 수 없습니다!', 'error'); return;
+                window.showToast('비밀번호는 비워둘 수 정 없습니다!', 'error'); return;
             }
 
             globalSchoolName = newName;
