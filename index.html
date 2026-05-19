@@ -14,7 +14,6 @@
             font-family: 'Jua', sans-serif;
             background-color: #f0f8ff;
             color: #333;
-            /* 모바일 환경 대응을 위한 최소 높이 설정 */
             min-height: 100vh;
         }
         
@@ -271,8 +270,9 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // 선생님께서 원래 사용하시던 Firebase 10.7.1 원본 임포트 로직 그대로 복구
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // 선생님의 실제 Firebase 설정값
         const firebaseConfig = {
@@ -287,11 +287,6 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        
-        let dbReady = false;
-
-        // DB 저장 경로를 원래 방식('units', 'scores' 등)으로 복구
-        const getCollectionPath = (collectionName) => collectionName;
 
         // 상태 변수
         let useLocalMock = false; 
@@ -378,7 +373,6 @@
         async function initApp() {
             applyGlobalSettings();
             
-            // 로컬 기본 데이터 로드
             let localUnits = JSON.parse(localStorage.getItem('rs_localUnits'));
             if (localUnits && Object.keys(localUnits).length > 0) {
                 loadedUnits = localUnits;
@@ -391,20 +385,17 @@
             }
 
             try {
-                dbReady = true;
-
-                // 데이터 페치
+                // 선생님 원본 코드 복구: 타임아웃(Promise.race) 기능 완벽하게 복원
                 const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("DB Connection Timeout")), 3000));
-                
-                // Units 가져오기 (Rule 1 Path 적용)
-                const unitsPath = getCollectionPath('units');
-                const querySnapshot = await Promise.race([getDocs(collection(db, unitsPath)), timeout]);
+                const querySnapshot = await Promise.race([getDocs(collection(db, "units")), timeout]);
                 
                 let firebaseUnits = {};
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     if (data.texts && Array.isArray(data.texts)) {
                         firebaseUnits[doc.id] = data.texts;
+                    } else if (data.text) {
+                        firebaseUnits[doc.id] = [data.text];
                     }
                 });
                 
@@ -412,38 +403,40 @@
                     loadedUnits = firebaseUnits;
                     localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
                 } else {
-                    // 초기 데이터 세팅
                     for (const [name, textsArray] of Object.entries(loadedUnits)) {
-                        setDoc(doc(db, unitsPath, name), { texts: textsArray }).catch(e => console.warn(e));
+                        setDoc(doc(db, "units", name), { texts: textsArray }).catch(e => {});
                     }
                 }
 
-                // Settings 가져오기
-                const settingsPath = getCollectionPath('settings');
-                const settingsDoc = await Promise.race([getDocs(collection(db, settingsPath)), timeout]);
-                settingsDoc.forEach((docItem) => {
-                    if(docItem.id === "global") {
-                        const data = docItem.data();
-                        if(data.schoolName !== undefined) globalSchoolName = data.schoolName;
-                        if(data.teacherPw !== undefined) globalTeacherPw = data.teacherPw;
-                        localStorage.setItem("rs_schoolName", globalSchoolName);
-                        localStorage.setItem("rs_teacherPw", globalTeacherPw);
-                        applyGlobalSettings();
-                    }
-                });
+                try {
+                    const settingsDoc = await Promise.race([getDocs(collection(db, "settings")), timeout]);
+                    settingsDoc.forEach((docItem) => {
+                        if(docItem.id === "global") {
+                            const data = docItem.data();
+                            if(data.schoolName !== undefined) globalSchoolName = data.schoolName;
+                            if(data.teacherPw !== undefined) globalTeacherPw = data.teacherPw;
+                            localStorage.setItem("rs_schoolName", globalSchoolName);
+                            localStorage.setItem("rs_teacherPw", globalTeacherPw);
+                            applyGlobalSettings();
+                        }
+                    });
+                } catch (e) {
+                    console.warn("설정 문서 가져오기 실패", e);
+                }
 
             } catch (error) {
+                // 선생님 원본 코드 복구: 실패 시 안내 배너 처리 완벽 복원
                 console.warn("Firestore 연결 실패. 로컬 메모리 모드로 전환합니다:", error);
                 useLocalMock = true;
-                dbReady = false;
                 const banner = document.getElementById('banner');
                 banner.classList.remove('hidden');
-                if (error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions')) {
-                    banner.innerHTML = "<b>⚠️ 권한 오류:</b> 공용 데이터를 불러오지 못했습니다. 로컬 모드로 실행됩니다.";
+                
+                if (error.code === 'permission-denied') {
+                    banner.innerHTML = "<b>⚠️ Firebase 규칙 오류:</b> Firebase 콘솔의 Firestore Database '규칙(Rules)' 탭에서 읽기/쓰기 권한을 허용해주세요. (현재 로컬 모드)";
                 } else if (error.message && error.message.includes('Timeout')) {
-                     banner.innerHTML = "<b>⚠️ 연결 지연:</b> 서버 응답이 늦어 로컬 모드로 실행됩니다.";
+                     banner.innerHTML = "<b>⚠️ 연결 지연:</b> Firebase 서버 응답이 늦어 로컬 임시 모드로 실행 중입니다.";
                 } else {
-                    banner.innerHTML = `<b>⚠️ 시스템 알림:</b> 로컬 모드로 실행됩니다.`;
+                    banner.innerHTML = `<b>⚠️ 연결 실패:</b> 로컬 임시 모드로 실행 중입니다. (${error.message})`;
                 }
             } finally {
                 window.refreshUnitSelects();
@@ -700,16 +693,13 @@
         // 텍스트 정규화 (숫자 변환 -> 소문자화 -> 특수문자 제거 -> 공백 압축)
         function normalizeTextForComparison(text) {
             let normalized = text.toLowerCase();
-            // 영단어 숫자를 아라비아 숫자 형태(1st, 2 등)로 일괄 변환
             for (const [word, digit] of Object.entries(numberWordMap)) {
                 const regex = new RegExp(`\\b${word}\\b`, 'g');
                 normalized = normalized.replace(regex, digit);
             }
-            // 영어 알파벳, 숫자, 한글, 단일 공백만 남기고 모두 제거
             return normalized.replace(/[^a-z0-9가-힣\s]/g, "").replace(/\s+/g, " ").trim();
         }
 
-        // 결과 계산 (대소문자 통일, 특수문자 제거, 다중 공백 단일화, 숫자 영단어 변환)
         function calculateAndShowResult(target, recognized, timeTaken) {
             const cleanTarget = normalizeTextForComparison(target);
             const cleanRecognized = normalizeTextForComparison(recognized);
@@ -812,39 +802,43 @@
         };
 
         async function saveScoreToDB(displayUnitName, score, timeTaken, accuracy, baseUnitName) {
-            const scoreData = {
-                unit: displayUnitName,
-                baseUnit: baseUnitName, 
-                grade: currentUser.grade,
-                classNum: currentUser.classNum,
-                studentNum: currentUser.studentNum,
-                name: currentUser.studentName,
-                score: score,
-                accuracy: accuracy,
-                time: timeTaken,
-                timestamp: Date.now() // 타임스탬프 통일을 위해 로컬 시간 사용
-            };
-
-            if(useLocalMock || !dbReady) {
-                mockScores.push(scoreData);
-                localStorage.setItem('rs_localScores', JSON.stringify(mockScores));
-                const statusEl = document.getElementById('saveStatus');
-                if(statusEl) statusEl.innerText = "✅ 기록이 로컬에 저장되었습니다!";
-                return;
-            }
-
             try {
-                const scoresPath = getCollectionPath('scores');
-                const savePromise = addDoc(collection(db, scoresPath), scoreData);
-                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
-                await Promise.race([savePromise, timeout]);
-                const statusEl = document.getElementById('saveStatus');
-                if(statusEl) statusEl.innerText = "✅ 기록이 서버에 저장되었습니다!";
+                // 선생님 원본 코드 복구: serverTimestamp() 사용
+                const scoreData = {
+                    unit: displayUnitName,
+                    baseUnit: baseUnitName, 
+                    grade: currentUser.grade,
+                    classNum: currentUser.classNum,
+                    studentNum: currentUser.studentNum,
+                    name: currentUser.studentName,
+                    score: score,
+                    accuracy: accuracy,
+                    time: timeTaken,
+                    timestamp: useLocalMock ? Date.now() : serverTimestamp()
+                };
+
+                if(useLocalMock) {
+                    mockScores.push(scoreData);
+                    localStorage.setItem('rs_localScores', JSON.stringify(mockScores));
+                    document.getElementById('saveStatus').innerText = "✅ 기록이 로컬에 저장되었습니다!";
+                } else {
+                    // 선생님 원본 코드 복구: Promise.race 적용
+                    const savePromise = addDoc(collection(db, "scores"), scoreData);
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                    await Promise.race([savePromise, timeout]);
+                    document.getElementById('saveStatus').innerText = "✅ 기록이 서버에 저장되었습니다!";
+                }
             } catch (e) {
                 console.warn("점수 저장 에러:", e);
-                const statusEl = document.getElementById('saveStatus');
-                if(statusEl) statusEl.innerText = "✅ 기록이 로컬에 임시 저장되었습니다! (서버 지연)";
-                mockScores.push(scoreData);
+                document.getElementById('saveStatus').innerText = "✅ 기록이 로컬에 임시 저장되었습니다! (서버 지연)";
+                useLocalMock = true;
+                
+                const fallbackData = {
+                    unit: displayUnitName, baseUnit: baseUnitName, grade: currentUser.grade, classNum: currentUser.classNum,
+                    studentNum: currentUser.studentNum, name: currentUser.studentName, score: score, accuracy: accuracy, time: timeTaken,
+                    timestamp: Date.now()
+                };
+                mockScores.push(fallbackData);
                 localStorage.setItem('rs_localScores', JSON.stringify(mockScores));
             }
         }
@@ -876,21 +870,23 @@
 
             try {
                 let rawScores = [];
-                // Rule 2 준수: 전체 데이터를 가져온 후 JS 메모리에서 필터링/정렬 수행
-                if(useLocalMock || !dbReady) {
-                    rawScores = mockScores;
+                
+                if(useLocalMock) {
+                    rawScores = mockScores.filter(s => s.baseUnit === unitName);
                 } else {
-                    const scoresPath = getCollectionPath('scores');
-                    const querySnapshot = await getDocs(collection(db, scoresPath));
-                    querySnapshot.forEach((doc) => { rawScores.push(doc.data()); });
+                    // 선생님 원본 코드 복구: where문 및 Promise.race 그대로 사용
+                    const q = query(collection(db, "scores"), where("baseUnit", "==", unitName));
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
+                    const querySnapshot = await Promise.race([getDocs(q), timeout]);
+                    querySnapshot.forEach((doc) => {
+                        rawScores.push(doc.data());
+                    });
                 }
 
-                // JS 메모리 필터링
-                let filteredScores = rawScores.filter(s => s.baseUnit === unitName);
+                let filteredScores = rawScores;
                 if (gradeFilter !== "ALL") filteredScores = filteredScores.filter(s => String(s.grade) === String(gradeFilter));
                 if (classFilter !== "ALL") filteredScores = filteredScores.filter(s => String(s.classNum) === String(classFilter));
 
-                // 학생별 합산
                 const studentTotals = {};
                 filteredScores.forEach(data => {
                     const studentKey = `${data.grade}-${data.classNum}-${data.studentNum}-${data.name}`;
@@ -903,7 +899,6 @@
                     studentTotals[studentKey].totalScore += (data.score || 0);
                 });
 
-                // 점수 내림차순 정렬
                 const sortedStudents = Object.values(studentTotals).sort((a, b) => b.totalScore - a.totalScore);
 
                 listArea.innerHTML = '';
@@ -949,14 +944,16 @@
                 globalTeacherPw = '1234';
                 localStorage.setItem("rs_teacherPw", globalTeacherPw);
                 
-                if(!useLocalMock && dbReady) {
+                if(!useLocalMock) {
                     try {
-                        const settingsPath = getCollectionPath('settings');
-                        await setDoc(doc(db, settingsPath, "global"), { 
+                        const savePromise = setDoc(doc(db, "settings", "global"), { 
                             schoolName: globalSchoolName, teacherPw: globalTeacherPw 
                         }, { merge: true });
+                        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                        await Promise.race([savePromise, timeout]);
                     } catch(e) {
                         console.warn("비밀번호 초기화 DB 저장 지연", e);
+                        useLocalMock = true;
                     }
                 }
                 window.showToast("비밀번호가 '1234'로 초기화되었습니다.", "success");
@@ -977,14 +974,16 @@
             localStorage.setItem("rs_teacherPw", globalTeacherPw);
             applyGlobalSettings();
 
-            if(!useLocalMock && dbReady) {
+            if(!useLocalMock) {
                 try {
-                    const settingsPath = getCollectionPath('settings');
-                    await setDoc(doc(db, settingsPath, "global"), { 
+                    const savePromise = setDoc(doc(db, "settings", "global"), { 
                         schoolName: globalSchoolName, teacherPw: globalTeacherPw 
                     });
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                    await Promise.race([savePromise, timeout]);
                 } catch(e) {
                     console.warn("설정 DB 저장 지연", e);
+                    useLocalMock = true;
                 }
             }
             window.showToast('기본 설정이 성공적으로 저장되었습니다!', 'success');
@@ -1012,12 +1011,14 @@
             window.renderTeacherUnitList();
             window.refreshUnitSelects();
 
-            if(!useLocalMock && dbReady) {
+            if(!useLocalMock) {
                 try {
-                    const unitsPath = getCollectionPath('units');
-                    await setDoc(doc(db, unitsPath, name), { texts: loadedUnits[name] });
+                    const savePromise = setDoc(doc(db, "units", name), { texts: loadedUnits[name] });
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                    await Promise.race([savePromise, timeout]);
                 } catch (e) {
                     console.warn("DB 연결 지연. 로컬 저장 완료.");
+                    useLocalMock = true;
                 }
             }
             window.showToast(`'${name}' 단원에 ${newSentences.length}개의 문장이 추가되었습니다!`, 'success');
@@ -1032,15 +1033,17 @@
                 window.renderTeacherUnitList();
                 window.refreshUnitSelects();
 
-                if(!useLocalMock && dbReady) {
+                if(!useLocalMock) {
                     try {
-                        const unitsPath = getCollectionPath('units');
+                        let savePromise;
                         if(loadedUnits[unitName]) {
-                            await setDoc(doc(db, unitsPath, unitName), { texts: loadedUnits[unitName] });
+                            savePromise = setDoc(doc(db, "units", unitName), { texts: loadedUnits[unitName] });
                         } else {
-                            await deleteDoc(doc(db, unitsPath, unitName));
+                            savePromise = deleteDoc(doc(db, "units", unitName));
                         }
-                    } catch (e) { console.warn(e); }
+                        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                        await Promise.race([savePromise, timeout]);
+                    } catch (e) { useLocalMock = true; }
                 }
                 window.showToast("문장이 삭제되었습니다.", "success");
             });
@@ -1053,11 +1056,12 @@
                 window.renderTeacherUnitList();
                 window.refreshUnitSelects();
 
-                if(!useLocalMock && dbReady) {
+                if(!useLocalMock) {
                     try {
-                        const unitsPath = getCollectionPath('units');
-                        await deleteDoc(doc(db, unitsPath, unitName));
-                    } catch (e) { console.warn(e); }
+                        const delPromise = deleteDoc(doc(db, "units", unitName));
+                        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                        await Promise.race([delPromise, timeout]);
+                    } catch (e) { useLocalMock = true; }
                 }
                 window.showToast("단원이 삭제되었습니다.", "success");
             });
@@ -1102,27 +1106,31 @@
             tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-gray-500">데이터를 불러오는 중입니다... ⏳</td></tr>';
 
             try {
-                let rawScores = [];
-                // Rule 2 준수: 전체 데이터 패치 후 JS 메모리에서 최신순 정렬 및 필터링
-                if(useLocalMock || !dbReady) {
-                    rawScores = [...mockScores];
-                } else {
-                    const scoresPath = getCollectionPath('scores');
-                    const querySnapshot = await getDocs(collection(db, scoresPath));
-                    querySnapshot.forEach(doc => { rawScores.push(doc.data()); });
-                }
-
-                // JS 필터링 & 정렬
-                let fetchedScores = rawScores;
-                if(unitFilter !== "ALL") {
-                    fetchedScores = fetchedScores.filter(s => s.baseUnit === unitFilter);
-                }
-                // 최신순 정렬 (timestamp 기준 내림차순)
-                fetchedScores.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                let fetchedScores = [];
                 
-                // 50개 제한
-                fetchedScores = fetchedScores.slice(0, 50);
-
+                if(useLocalMock) {
+                    fetchedScores = mockScores;
+                    if(unitFilter !== "ALL") {
+                        fetchedScores = fetchedScores.filter(s => s.baseUnit === unitFilter);
+                    }
+                    fetchedScores.sort((a,b) => b.timestamp - a.timestamp);
+                } else {
+                    // 선생님 원본 코드 복구: orderBy 및 where 그대로 복원
+                    let q;
+                    if(unitFilter === "ALL") {
+                        q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(50));
+                    } else {
+                        q = query(collection(db, "scores"), where("baseUnit", "==", unitFilter), orderBy("timestamp", "desc"), limit(50));
+                    }
+                    
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000));
+                    const querySnapshot = await Promise.race([getDocs(q), timeout]);
+                    
+                    querySnapshot.forEach(doc => {
+                        fetchedScores.push(doc.data());
+                    });
+                }
+                
                 tbody.innerHTML = '';
                 if(fetchedScores.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-gray-500">조회된 학생 학습 기록이 없습니다.</td></tr>';
@@ -1130,9 +1138,12 @@
                 }
                 
                 fetchedScores.forEach(data => {
-                    let dateObj = new Date(data.timestamp || Date.now());
-                    if(data.timestamp && data.timestamp.toDate) dateObj = data.timestamp.toDate(); // firestore timestamp 호환
-                    
+                    let dateObj = new Date();
+                    if (data.timestamp && data.timestamp.toDate) {
+                        dateObj = data.timestamp.toDate();
+                    } else if (data.timestamp) {
+                        dateObj = new Date(data.timestamp);
+                    }
                     const dateStr = `${dateObj.getMonth()+1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
                     const accuracyColor = data.accuracy >= 80 ? 'text-green-500' : 'text-red-500';
                     
