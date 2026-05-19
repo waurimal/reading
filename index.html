@@ -272,27 +272,26 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 플랫폼 통합 환경 변수 활용 (필수 Rule 1, 3 대응)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'reading-sprint-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // 로컬 테스트용 폴백 (실제 환경에서는 플랫폼이 주입함)
-            apiKey: "dummy-key",
-            projectId: "dummy-project"
+        // 선생님의 실제 Firebase 설정값
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjduUB1-EAPdujZ6kqAwoBisAj6LNXV28",
+            authDomain: "reading-c0510.firebaseapp.com",
+            projectId: "reading-c0510",
+            storageBucket: "reading-c0510.firebasestorage.app",
+            messagingSenderId: "140234107393",
+            appId: "1:140234107393:web:6ede13e43bf353a8b5ee00",
+            measurementId: "G-5X277KTD9R"
         };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const db = getFirestore(app);
         
         let dbReady = false;
-        let userId = null;
 
-        // 필수 경로 생성 헬퍼 함수 (Rule 1)
-        const getCollectionPath = (collectionName) => `artifacts/${appId}/public/data/${collectionName}`;
+        // DB 저장 경로를 원래 방식('units', 'scores' 등)으로 복구
+        const getCollectionPath = (collectionName) => collectionName;
 
         // 상태 변수
         let useLocalMock = false; 
@@ -392,13 +391,6 @@
             }
 
             try {
-                // Rule 3: Auth First
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                userId = auth.currentUser.uid;
                 dbReady = true;
 
                 // 데이터 페치
@@ -695,11 +687,32 @@
             return matrix[b.length][a.length];
         }
 
-        // 결과 계산 (대소문자 통일, 특수문자 제거, 다중 공백 단일화)
+        // 숫자 영단어를 숫자로 변환하기 위한 맵
+        const numberWordMap = {
+            "first": "1st", "second": "2nd", "third": "3rd", "fourth": "4th", "fifth": "5th", 
+            "sixth": "6th", "seventh": "7th", "eighth": "8th", "ninth": "9th", "tenth": "10th",
+            "eleventh": "11th", "twelfth": "12th",
+            "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+            "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+            "eleven": "11", "twelve": "12", "zero": "0"
+        };
+
+        // 텍스트 정규화 (숫자 변환 -> 소문자화 -> 특수문자 제거 -> 공백 압축)
+        function normalizeTextForComparison(text) {
+            let normalized = text.toLowerCase();
+            // 영단어 숫자를 아라비아 숫자 형태(1st, 2 등)로 일괄 변환
+            for (const [word, digit] of Object.entries(numberWordMap)) {
+                const regex = new RegExp(`\\b${word}\\b`, 'g');
+                normalized = normalized.replace(regex, digit);
+            }
+            // 영어 알파벳, 숫자, 한글, 단일 공백만 남기고 모두 제거
+            return normalized.replace(/[^a-z0-9가-힣\s]/g, "").replace(/\s+/g, " ").trim();
+        }
+
+        // 결과 계산 (대소문자 통일, 특수문자 제거, 다중 공백 단일화, 숫자 영단어 변환)
         function calculateAndShowResult(target, recognized, timeTaken) {
-            // 정규식을 사용해 영어 알파벳, 숫자, 한글, 단일 공백만 남기고 모두 제거
-            const cleanTarget = target.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, "").replace(/\s+/g, " ").trim();
-            const cleanRecognized = recognized.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, "").replace(/\s+/g, " ").trim();
+            const cleanTarget = normalizeTextForComparison(target);
+            const cleanRecognized = normalizeTextForComparison(recognized);
 
             const distance = getLevenshteinDistance(cleanTarget, cleanRecognized);
             const maxLength = Math.max(cleanTarget.length, cleanRecognized.length);
@@ -812,7 +825,7 @@
                 timestamp: Date.now() // 타임스탬프 통일을 위해 로컬 시간 사용
             };
 
-            if(useLocalMock || !dbReady || !userId) {
+            if(useLocalMock || !dbReady) {
                 mockScores.push(scoreData);
                 localStorage.setItem('rs_localScores', JSON.stringify(mockScores));
                 const statusEl = document.getElementById('saveStatus');
@@ -936,7 +949,7 @@
                 globalTeacherPw = '1234';
                 localStorage.setItem("rs_teacherPw", globalTeacherPw);
                 
-                if(!useLocalMock && dbReady && userId) {
+                if(!useLocalMock && dbReady) {
                     try {
                         const settingsPath = getCollectionPath('settings');
                         await setDoc(doc(db, settingsPath, "global"), { 
@@ -964,7 +977,7 @@
             localStorage.setItem("rs_teacherPw", globalTeacherPw);
             applyGlobalSettings();
 
-            if(!useLocalMock && dbReady && userId) {
+            if(!useLocalMock && dbReady) {
                 try {
                     const settingsPath = getCollectionPath('settings');
                     await setDoc(doc(db, settingsPath, "global"), { 
@@ -999,7 +1012,7 @@
             window.renderTeacherUnitList();
             window.refreshUnitSelects();
 
-            if(!useLocalMock && dbReady && userId) {
+            if(!useLocalMock && dbReady) {
                 try {
                     const unitsPath = getCollectionPath('units');
                     await setDoc(doc(db, unitsPath, name), { texts: loadedUnits[name] });
@@ -1019,7 +1032,7 @@
                 window.renderTeacherUnitList();
                 window.refreshUnitSelects();
 
-                if(!useLocalMock && dbReady && userId) {
+                if(!useLocalMock && dbReady) {
                     try {
                         const unitsPath = getCollectionPath('units');
                         if(loadedUnits[unitName]) {
@@ -1040,7 +1053,7 @@
                 window.renderTeacherUnitList();
                 window.refreshUnitSelects();
 
-                if(!useLocalMock && dbReady && userId) {
+                if(!useLocalMock && dbReady) {
                     try {
                         const unitsPath = getCollectionPath('units');
                         await deleteDoc(doc(db, unitsPath, unitName));
