@@ -226,6 +226,19 @@
         </div>
     </div>
 
+    <!-- 추가된 화면 7: 최종 결과 화면 -->
+    <div id="resultScreen" class="screen">
+        <h1>🎉 단원 연습 완료!</h1>
+        <h2 id="finalResultUnitTitle" style="color: #6c5ce7; font-size: 2em;">Unit 1</h2>
+        <div style="background: #ffeaa7; padding: 30px; border-radius: 20px; margin: 20px 0; display: inline-block; width: 80%;">
+            <div style="font-size: 1.5em; color: #555; margin-bottom: 10px;">이번 단원 총 획득 포인트</div>
+            <div style="font-size: 4em; color: #e67e22; font-weight: bold;"><span id="finalScoreDisplay">0</span><span style="font-size: 0.5em; color: #333;"> 점</span></div>
+        </div>
+        <br>
+        <button onclick="window.showLeaderboard()" style="background-color: #feca57; font-size: 1.3em; padding: 15px 30px;">🏆 명예의 전당 보기</button>
+        <button onclick="window.showScreen('lobbyScreen')" style="font-size: 1.3em; padding: 15px 30px; margin-left: 10px;">🏠 메인으로</button>
+    </div>
+
     <!-- 화면 4: 명예의 전당 -->
     <div id="leaderboardScreen" class="screen">
         <h1>🏆 명예의 전당 🏆</h1>
@@ -319,7 +332,6 @@
         <div class="dashboard-section">
             <h3>📝 단원 및 문장 관리</h3>
             
-            <!-- 변경된 부분: 저장된 목록을 위로 올려 즉시 보이게 함 -->
             <div id="teacherUnitList" style="margin-bottom: 25px; max-height: 400px; overflow-y: auto; padding-right: 10px;">
                 <!-- 교사용 단원/문장 리스트 -->
             </div>
@@ -328,7 +340,6 @@
                 <h4 style="margin-top:0; color:#0984e3; font-size:1.2em;">➕ 새 단원/문장 추가하기</h4>
                 <p style="margin-top:0; color:#2d3436; font-size:0.9em;">* 빈칸을 클릭해 <b>기존 단원</b>을 선택하거나 <b>새 단원명</b>을 입력하세요.<br>* 여러 문장을 한 번에 등록하려면 <b>엔터(줄바꿈)</b>로 구분해서 입력하세요.</p>
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;">
-                    <!-- 단원명 드롭다운 (datalist) 추가 -->
                     <input type="text" id="newUnitName" placeholder="단원명 직접 입력 또는 화살표 눌러 선택" list="existingUnitsList" style="width: 100%; box-sizing: border-box;">
                     <datalist id="existingUnitsList"></datalist>
                     
@@ -365,8 +376,7 @@
     const db = getFirestore(app);
 
     let useLocalMock = false; 
-    let loadedUnits = {}; // 구조: { "Unit 1": ["문장 1", "문장 2", ...], "Unit 2": ["문장 1"] }
-    // 로컬 스토리지에 점수 데이터가 있으면 불러오고, 없으면 빈 배열로 초기화 (유실 방지)
+    let loadedUnits = {}; 
     let mockScores = JSON.parse(localStorage.getItem('rs_localScores')) || [];
     
     // 설정값
@@ -382,11 +392,14 @@
     // 현재 연습 중인 상태 저장
     let currentPracticeUnit = "";
     let currentSentenceIndex = 0;
+    
+    // 추가: 결과 수동 확인 및 누적 점수 처리용 변수
+    let pendingResult = null;
+    let currentUnitTotalScore = 0;
 
     window.showScreen = function(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
-        // 교사 대시보드 진입 시 리스트를 최신화
         if(screenId === 'teacherDashboardScreen') {
             window.renderTeacherUnitList();
         }
@@ -412,7 +425,6 @@
     async function initApp() {
         applyGlobalSettings();
         
-        // 1. 유실 방지를 위해 로컬 스토리지 데이터를 먼저 최우선으로 불러옵니다.
         let localUnits = JSON.parse(localStorage.getItem('rs_localUnits'));
         if (localUnits && Object.keys(localUnits).length > 0) {
             loadedUnits = localUnits;
@@ -425,7 +437,6 @@
         }
 
         try {
-            // 2. Firebase 최신 데이터 불러오기 시도
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("DB Connection Timeout")), 3000));
             const querySnapshot = await Promise.race([getDocs(collection(db, "units")), timeout]);
             
@@ -439,12 +450,10 @@
                 }
             });
             
-            // Firebase에 데이터가 정상적으로 있다면 동기화 
             if (Object.keys(firebaseUnits).length > 0) {
                 loadedUnits = firebaseUnits;
                 localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
             } else {
-                // Firebase가 텅 비어있다면 (최초 세팅이거나 에러) 내 컴퓨터(로컬)의 데이터를 Firebase로 복구!
                 for (const [name, textsArray] of Object.entries(loadedUnits)) {
                     setDoc(doc(db, "units", name), { texts: textsArray }).catch(e => {});
                 }
@@ -495,7 +504,6 @@
         
         selects.forEach((select, index) => {
             if(!select) return;
-            // 교사 현황 조회 드롭다운은 '전체' 옵션 유지
             if(index === 2) {
                 select.innerHTML = '<option value="ALL">전체 단원 보기</option>';
             } else {
@@ -507,14 +515,12 @@
             }
         });
         
-        // 단원 추가 시 사용할 자동완성 목록 구성
         if(dataList) {
             for (const unitName in loadedUnits) {
                 dataList.innerHTML += `<option value="${unitName}">`;
             }
         }
         
-        // 데이터가 뒤늦게 불러와져도 교사 대시보드가 열려있으면 즉시 목록을 재렌더링
         if (document.getElementById('teacherDashboardScreen').classList.contains('active')) {
             window.renderTeacherUnitList();
         }
@@ -536,10 +542,10 @@
         window.showScreen('lobbyScreen');
     };
 
-    // 연습 시작 (인덱스 파라미터 추가)
     window.startPractice = function(startIndex = 0) {
         if(startIndex === 0) {
             currentPracticeUnit = document.getElementById('unitSelect').value;
+            currentUnitTotalScore = 0; // 단원 시작 시 누적 점수 초기화
         }
         
         if(!currentPracticeUnit || !loadedUnits[currentPracticeUnit]) {
@@ -547,6 +553,7 @@
         }
 
         currentSentenceIndex = startIndex;
+        pendingResult = null; // 대기 상태 초기화
         const sentences = loadedUnits[currentPracticeUnit];
         
         document.getElementById('currentUnitTitle').innerText = currentPracticeUnit;
@@ -572,10 +579,10 @@
         if (!text || text === "Loading..." || text === "문장을 찾을 수 없습니다.") return;
         
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // 진행 중인 음성 초기화
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
-            utterance.rate = 0.85; // 초등학생 배려를 위해 살짝 느리게
+            utterance.rate = 0.85; 
             window.speechSynthesis.speak(utterance);
         } else {
             alert("사용 중인 브라우저에서는 듣기 기능을 지원하지 않습니다.");
@@ -598,10 +605,7 @@
     // 마이크 켜기 및 완료 토글 기능 수정 (수동 완료 추가)
     window.toggleRecording = function() {
         if(isRecording) {
-            // 이미 녹음 중일 때 한 번 더 누르면 수동으로 녹음 종료 및 평가(제출)
-            if(recognition) {
-                recognition.stop(); 
-            }
+            if(recognition) recognition.stop(); 
             return;
         }
         
@@ -614,7 +618,6 @@
         
         recognition.onstart = function() {
             isRecording = true;
-            // 안내 텍스트 변경: 누르면 제출된다는 것을 인지시킴
             document.getElementById('recordBtn').innerText = "🛑 다 읽었어요! (제출)";
             document.getElementById('recordBtn').style.backgroundColor = "#e74c3c";
             
@@ -626,20 +629,31 @@
         };
 
         recognition.onspeechend = function() {
-            // 발화가 끝난 것을 감지하면 자동 중지
             recognition.stop();
         };
 
         recognition.onresult = function(event) {
             clearInterval(timerInterval);
             isRecording = false;
-            document.getElementById('recordBtn').innerText = "🎙️ 다시 시도";
+            document.getElementById('recordBtn').innerText = "🎙️ 다시 녹음하기";
             document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
 
             const recognizedText = event.results[0][0].transcript;
             const timeTaken = (Date.now() - startTime) / 1000;
             
-            calculateAndShowResult(targetText, recognizedText, timeTaken);
+            // 결과를 바로 표시하지 않고 대기 상태로 저장
+            pendingResult = { recognizedText, timeTaken };
+            
+            const feedbackBox = document.getElementById('feedbackArea');
+            feedbackBox.innerHTML = `
+                <div style="margin-bottom:10px; font-size: 1.1rem; color:#555;">음성 입력이 완료되었습니다! 결과를 확인해 볼까요?</div>
+                <button id="checkResultBtn" onclick="window.confirmResult()" style="background-color: #fd9644; font-size: 1.2em; padding: 10px 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%;">✅ 결과 확인하기 (Enter)</button>
+            `;
+            
+            setTimeout(() => {
+                const btn = document.getElementById('checkResultBtn');
+                if (btn) btn.focus();
+            }, 100);
         };
 
         recognition.onerror = function(event) {
@@ -655,7 +669,6 @@
         };
         
         recognition.onend = function() {
-            // onresult가 호출되지 않고 강제로 끝났을 경우의 안전장치
             if(isRecording) {
                 clearInterval(timerInterval);
                 isRecording = false;
@@ -669,6 +682,24 @@
 
         recognition.start();
     };
+
+    // 추가: 결과 수동 확인 함수
+    window.confirmResult = function() {
+        if (!pendingResult) return;
+        const targetText = document.getElementById('targetSentence').innerText;
+        calculateAndShowResult(targetText, pendingResult.recognizedText, pendingResult.timeTaken);
+        pendingResult = null; // 대기 상태 해제
+    };
+
+    // 키보드 엔터키 이벤트 (결과 확인용)
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const practiceScreen = document.getElementById('practiceScreen');
+            if (practiceScreen.classList.contains('active') && pendingResult) {
+                window.confirmResult();
+            }
+        }
+    });
 
     function getLevenshteinDistance(a, b) {
         const matrix = [];
@@ -714,6 +745,7 @@
             }
             
             finalScore = baseScore + speedBonus;
+            currentUnitTotalScore += finalScore; // 단원 총점 누적 업데이트
             
             feedbackHTML += `
                 <div style="color: #00e676; font-weight:bold; font-size:1.6rem;">정확도: ${accuracy}% 🎉 Excellent!</div>
@@ -727,7 +759,6 @@
                 <div id="saveStatus" style="font-size:0.9rem; color:#aaa; margin-top:10px;">기록 저장 중...☁️</div>
             `;
             
-            // 점수 저장 시, "단원명 - 문장 인덱스" 형태로 저장하여 식별 용이하게 함
             const saveUnitName = `${currentPracticeUnit} (문장 ${currentSentenceIndex + 1})`;
             saveScoreToDB(saveUnitName, finalScore, timeTaken, accuracy, currentPracticeUnit);
         }
@@ -738,9 +769,13 @@
         const totalSentences = loadedUnits[currentPracticeUnit].length;
         let navHTML = '';
         
-        if (currentSentenceIndex < totalSentences - 1 && accuracy >= 80) {
-            // 통과했고 다음 문장이 있으면 '다음 문장' 버튼 출력
-            navHTML += `<button onclick="window.startPractice(${currentSentenceIndex + 1})" style="background-color: #2ecc71;">➡️ 다음 문장 연습하기</button>`;
+        if (accuracy >= 80) {
+            if (currentSentenceIndex < totalSentences - 1) {
+                navHTML += `<button onclick="window.startPractice(${currentSentenceIndex + 1})" style="background-color: #2ecc71;">➡️ 다음 문장 연습하기</button>`;
+            } else {
+                // 통과했고 마지막 문장인 경우
+                navHTML += `<button onclick="window.showFinalResult()" style="background-color: #9b59b6; font-size: 1.2em;">🏁 단원 결과 확인하기</button>`;
+            }
         } else {
             // 통과 못했거나 마지막 문장이면 '다시 연습' 출력
             navHTML += `<button onclick="window.startPractice(${currentSentenceIndex})" style="background-color: #0984e3;">🔄 현재 문장 다시하기</button>`;
@@ -751,6 +786,13 @@
         navContainer.innerHTML = navHTML;
         navContainer.style.display = 'block';
     }
+
+    // 추가: 최종 단원 결과 화면 표시 함수
+    window.showFinalResult = function() {
+        document.getElementById('finalResultUnitTitle').innerText = currentPracticeUnit;
+        document.getElementById('finalScoreDisplay').innerText = currentUnitTotalScore;
+        window.showScreen('resultScreen');
+    };
 
     async function saveScoreToDB(displayUnitName, score, timeTaken, accuracy, baseUnitName) {
         try {
