@@ -352,13 +352,13 @@
     import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyDRDLloeG2GCuGvPlAjeC5QW5xVcmjce8I",
-        authDomain: "reading-add85.firebaseapp.com",
-        projectId: "reading-add85",
-        storageBucket: "reading-add85.firebasestorage.app",
-        messagingSenderId: "377081797792",
-        appId: "1:377081797792:web:3efc7ce049df6955213dc5",
-        measurementId: "G-EY079V9WDL"
+        apiKey: "AIzaSyBjduUB1-EAPdujZ6kqAwoBisAj6LNXV28",
+        authDomain: "reading-c0510.firebaseapp.com",
+        projectId: "reading-c0510",
+        storageBucket: "reading-c0510.firebasestorage.app",
+        messagingSenderId: "140234107393",
+        appId: "1:140234107393:web:6ede13e43bf353a8b5ee00",
+        measurementId: "G-5X277KTD9R"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -467,9 +467,17 @@
             }
 
         } catch (error) {
-            console.warn("Firestore 연결 지연. 로컬 메모리 모드로 전환합니다:", error);
+            console.warn("Firestore 연결 실패. 로컬 메모리 모드로 전환합니다:", error);
             useLocalMock = true;
-            document.getElementById('banner').style.display = 'block';
+            const banner = document.getElementById('banner');
+            banner.style.display = 'block';
+            if (error.code === 'permission-denied') {
+                banner.innerHTML = "<b>⚠️ Firebase 규칙 오류:</b> Firebase 콘솔의 Firestore Database '규칙(Rules)' 탭에서 읽기/쓰기 권한을 허용해주세요. (현재 로컬 모드)";
+            } else if (error.message && error.message.includes('Timeout')) {
+                 banner.innerHTML = "<b>⚠️ 연결 지연:</b> Firebase 서버 응답이 늦어 로컬 임시 모드로 실행 중입니다.";
+            } else {
+                banner.innerHTML = `<b>⚠️ 연결 실패:</b> 로컬 임시 모드로 실행 중입니다. (${error.message})`;
+            }
         } finally {
             window.refreshUnitSelects();
         }
