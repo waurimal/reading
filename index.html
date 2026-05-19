@@ -224,11 +224,35 @@
     <!-- 화면 4: 명예의 전당 -->
     <div id="leaderboardScreen" class="screen">
         <h1>🏆 명예의 전당 🏆</h1>
-        <div style="margin-bottom: 20px;">
+        
+        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center;">
             <select id="leaderboardUnitSelect" onchange="window.loadLeaderboardData()" style="width: 80%; max-width: 400px;">
                 <!-- 단원 목록 동적 렌더링 -->
             </select>
+            <div style="display: flex; gap: 10px; justify-content: center; width: 100%;">
+                <select id="leaderboardGradeSelect" onchange="window.loadLeaderboardData()" style="flex: 1; max-width: 150px;">
+                    <option value="ALL">전체 학년</option>
+                    <option value="3">3학년</option>
+                    <option value="4">4학년</option>
+                    <option value="5">5학년</option>
+                    <option value="6">6학년</option>
+                </select>
+                <select id="leaderboardClassSelect" onchange="window.loadLeaderboardData()" style="flex: 1; max-width: 150px;">
+                    <option value="ALL">전체 반</option>
+                    <option value="1">1반</option>
+                    <option value="2">2반</option>
+                    <option value="3">3반</option>
+                    <option value="4">4반</option>
+                    <option value="5">5반</option>
+                    <option value="6">6반</option>
+                    <option value="7">7반</option>
+                    <option value="8">8반</option>
+                    <option value="9">9반</option>
+                    <option value="10">10반</option>
+                </select>
+            </div>
         </div>
+
         <ul class="leaderboard-list" id="leaderboardList">
             <!-- 랭킹 데이터가 여기에 추가됩니다 -->
         </ul>
@@ -747,45 +771,86 @@
         }
     };
 
+    // 개선된 명예의 전당: 합산 데이터 계산 및 학년/반 필터링, 메달 표시
     window.loadLeaderboardData = async function() {
         const unitName = document.getElementById('leaderboardUnitSelect').value;
+        const gradeFilter = document.getElementById('leaderboardGradeSelect').value;
+        const classFilter = document.getElementById('leaderboardClassSelect').value;
         const listArea = document.getElementById('leaderboardList');
+        
         listArea.innerHTML = '<li style="justify-content:center;">데이터를 불러오는 중입니다... ⏳</li>';
         
         if(!unitName) return;
 
         try {
+            let rawScores = [];
+
             if(useLocalMock) {
-                const filtered = mockScores.filter(s => s.baseUnit === unitName).sort((a,b) => b.score - a.score).slice(0,10);
-                listArea.innerHTML = '';
-                if(filtered.length === 0) {
-                    listArea.innerHTML = '<li style="justify-content:center;">아직 기록이 없습니다. 첫 기록의 주인공이 되어보세요!</li>';
-                    return;
-                }
-                filtered.forEach((data, index) => {
-                    const rankStr = index === 0 ? "🥇 1위" : index === 1 ? "🥈 2위" : index === 2 ? "🥉 3위" : `${index+1}위`;
-                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name} <span style="font-size:0.8em; color:#999;">(${data.unit})</span></span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
-                });
+                rawScores = mockScores.filter(s => s.baseUnit === unitName);
             } else {
-                // 특정 단원의 문장들 점수 가져오기
-                const q = query(collection(db, "scores"), where("baseUnit", "==", unitName), orderBy("score", "desc"), limit(10));
+                // 특정 단원의 모든 문장 점수 가져오기
+                const q = query(collection(db, "scores"), where("baseUnit", "==", unitName));
                 const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
                 const querySnapshot = await Promise.race([getDocs(q), timeout]);
                 
-                if(querySnapshot.empty) {
-                    listArea.innerHTML = '<li style="justify-content:center;">아직 기록이 없습니다. 첫 기록의 주인공이 되어보세요!</li>';
-                    return;
-                }
-
-                listArea.innerHTML = '';
-                let rank = 1;
                 querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const rankStr = rank === 1 ? "🥇 1위" : rank === 2 ? "🥈 2위" : rank === 3 ? "🥉 3위" : `${rank}위`;
-                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name} <span style="font-size:0.8em; color:#999;">(${data.unit})</span></span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
-                    rank++;
+                    rawScores.push(doc.data());
                 });
             }
+
+            // 1. 선택된 학년, 반에 따라 필터링 수행
+            let filteredScores = rawScores;
+            if (gradeFilter !== "ALL") {
+                filteredScores = filteredScores.filter(s => s.grade === gradeFilter);
+            }
+            if (classFilter !== "ALL") {
+                filteredScores = filteredScores.filter(s => s.classNum === classFilter);
+            }
+
+            // 2. 학생별 점수 합산 (동일 학생이 획득한 각 문장 점수의 총합)
+            const studentTotals = {};
+            filteredScores.forEach(data => {
+                // 고유 식별 키: 학년-반-번호-이름
+                const studentKey = `${data.grade}-${data.classNum}-${data.studentNum}-${data.name}`;
+                if (!studentTotals[studentKey]) {
+                    studentTotals[studentKey] = {
+                        grade: data.grade,
+                        classNum: data.classNum,
+                        studentNum: data.studentNum,
+                        name: data.name,
+                        totalScore: 0
+                    };
+                }
+                studentTotals[studentKey].totalScore += (data.score || 0);
+            });
+
+            // 3. 점수 내림차순으로 정렬
+            const sortedStudents = Object.values(studentTotals).sort((a, b) => b.totalScore - a.totalScore);
+
+            listArea.innerHTML = '';
+            
+            if(sortedStudents.length === 0) {
+                listArea.innerHTML = '<li style="justify-content:center;">아직 기록이 없습니다. 첫 기록의 주인공이 되어보세요!</li>';
+                return;
+            }
+
+            // 4. 순위 출력 (최대 50명까지) 및 1, 2, 3위 메달 표시
+            let rank = 1;
+            sortedStudents.slice(0, 50).forEach((student) => {
+                let rankStr = `${rank}위`;
+                if (rank === 1) rankStr = "🥇 1위";
+                else if (rank === 2) rankStr = "🥈 2위";
+                else if (rank === 3) rankStr = "🥉 3위";
+
+                listArea.innerHTML += `
+                    <li>
+                        <span><b>${rankStr}</b> | ${student.grade}학년 ${student.classNum}반 ${student.name}</span> 
+                        <span style="font-weight:bold; color:#e67e22; font-size:1.1em;">${student.totalScore}점</span>
+                    </li>
+                `;
+                rank++;
+            });
+
         } catch(e) {
             console.error(e);
             listArea.innerHTML = '<li style="justify-content:center; color:red;">랭킹을 불러오는데 실패했습니다.</li>';
