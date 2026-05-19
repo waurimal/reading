@@ -226,7 +226,7 @@
         </div>
     </div>
 
-    <!-- 추가된 화면 7: 최종 결과 화면 -->
+    <!-- 화면 7: 최종 결과 화면 -->
     <div id="resultScreen" class="screen">
         <h1>🎉 단원 연습 완료!</h1>
         <h2 id="finalResultUnitTitle" style="color: #6c5ce7; font-size: 2em;">Unit 1</h2>
@@ -393,8 +393,8 @@
     let currentPracticeUnit = "";
     let currentSentenceIndex = 0;
     
-    // 추가: 결과 수동 확인 및 누적 점수 처리용 변수
-    let pendingResult = null;
+    // 변경: 수동 종료 시점에 인식된 텍스트를 모아둘 변수
+    let currentRecognizedText = "";
     let currentUnitTotalScore = 0;
 
     window.showScreen = function(screenId) {
@@ -553,7 +553,6 @@
         }
 
         currentSentenceIndex = startIndex;
-        pendingResult = null; // 대기 상태 초기화
         const sentences = loadedUnits[currentPracticeUnit];
         
         document.getElementById('currentUnitTitle').innerText = currentPracticeUnit;
@@ -597,28 +596,45 @@
         }
         const rc = new SpeechRecognition();
         rc.lang = 'en-US';
-        rc.interimResults = false;
+        rc.continuous = true;     // 중간에 말이 끊겨도 자동 종료 방지
+        rc.interimResults = true; // 말하는 중간 결과를 실시간 수집
         rc.maxAlternatives = 1;
         return rc;
     }
 
-    // 마이크 켜기 및 완료 토글 기능 수정 (수동 완료 추가)
+    // 마이크 켜기 및 완료 토글 기능 수정 (클릭/엔터 수동 종료로 결과 확인)
     window.toggleRecording = function() {
         if(isRecording) {
-            if(recognition) recognition.stop(); 
+            // 녹음 중일 때 버튼을 누르거나 엔터를 치면 수동으로 종료 및 평가 시작
+            isRecording = false;
+            clearInterval(timerInterval);
+            if(recognition) {
+                recognition.stop(); 
+            }
+            
+            document.getElementById('recordBtn').innerText = "🎙️ 다시 녹음하기";
+            document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
+            
+            const timeTaken = (Date.now() - startTime) / 1000;
+            const targetText = document.getElementById('targetSentence').innerText;
+            
+            // 수동 종료 시점에 모인 텍스트로 즉시 결과 표시
+            calculateAndShowResult(targetText, currentRecognizedText, timeTaken);
             return;
         }
         
         recognition = initSpeechRecognition();
         if(!recognition) return;
 
+        currentRecognizedText = ""; // 텍스트 초기화
         const targetText = document.getElementById('targetSentence').innerText;
         document.getElementById('feedbackArea').innerHTML = '';
         document.getElementById('practiceNavButtons').style.display = 'none';
         
         recognition.onstart = function() {
             isRecording = true;
-            document.getElementById('recordBtn').innerText = "🛑 다 읽었어요! (제출)";
+            // 안내 텍스트: 사용자가 직접 멈춰야 한다는 것을 강조
+            document.getElementById('recordBtn').innerText = "🛑 다 읽었어요! (결과 확인)";
             document.getElementById('recordBtn').style.backgroundColor = "#e74c3c";
             
             startTime = Date.now();
@@ -628,32 +644,18 @@
             }, 100);
         };
 
+        // continuous: true이므로 onspeechend는 무시하고 계속 듣습니다.
         recognition.onspeechend = function() {
-            recognition.stop();
+            // 아무 동작 안 함 (자동 종료 방지)
         };
 
         recognition.onresult = function(event) {
-            clearInterval(timerInterval);
-            isRecording = false;
-            document.getElementById('recordBtn').innerText = "🎙️ 다시 녹음하기";
-            document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
-
-            const recognizedText = event.results[0][0].transcript;
-            const timeTaken = (Date.now() - startTime) / 1000;
-            
-            // 결과를 바로 표시하지 않고 대기 상태로 저장
-            pendingResult = { recognizedText, timeTaken };
-            
-            const feedbackBox = document.getElementById('feedbackArea');
-            feedbackBox.innerHTML = `
-                <div style="margin-bottom:10px; font-size: 1.1rem; color:#555;">음성 입력이 완료되었습니다! 결과를 확인해 볼까요?</div>
-                <button id="checkResultBtn" onclick="window.confirmResult()" style="background-color: #fd9644; font-size: 1.2em; padding: 10px 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%;">✅ 결과 확인하기 (Enter)</button>
-            `;
-            
-            setTimeout(() => {
-                const btn = document.getElementById('checkResultBtn');
-                if (btn) btn.focus();
-            }, 100);
+            let tempText = "";
+            for (let i = 0; i < event.results.length; i++) {
+                tempText += event.results[i][0].transcript + " ";
+            }
+            // 최종적으로 수집된 텍스트
+            currentRecognizedText = tempText.trim();
         };
 
         recognition.onerror = function(event) {
@@ -669,13 +671,18 @@
         };
         
         recognition.onend = function() {
+            // 사용자가 버튼을 누르지 않았는데 시스템/브라우저가 강제 종료한 경우의 안전장치
             if(isRecording) {
-                clearInterval(timerInterval);
                 isRecording = false;
-                document.getElementById('recordBtn').innerText = "🎙️ 다시 시도";
+                clearInterval(timerInterval);
+                document.getElementById('recordBtn').innerText = "🎙️ 다시 녹음하기";
                 document.getElementById('recordBtn').style.backgroundColor = "#ff6b6b";
-                if (document.getElementById('feedbackArea').innerHTML === '') {
-                    document.getElementById('feedbackArea').innerHTML = '<span style="color:#e74c3c;">음성 인식이 정상적으로 완료되지 않았습니다. 버튼을 다시 눌러주세요.</span>';
+                
+                const timeTaken = (Date.now() - startTime) / 1000;
+                if(currentRecognizedText === "") {
+                    document.getElementById('feedbackArea').innerHTML = '<span style="color:#e74c3c;">음성 인식이 정상적으로 완료되지 않았습니다. 다시 버튼을 눌러 연습해 주세요.</span>';
+                } else {
+                    calculateAndShowResult(targetText, currentRecognizedText, timeTaken);
                 }
             }
         };
@@ -683,20 +690,12 @@
         recognition.start();
     };
 
-    // 추가: 결과 수동 확인 함수
-    window.confirmResult = function() {
-        if (!pendingResult) return;
-        const targetText = document.getElementById('targetSentence').innerText;
-        calculateAndShowResult(targetText, pendingResult.recognizedText, pendingResult.timeTaken);
-        pendingResult = null; // 대기 상태 해제
-    };
-
-    // 키보드 엔터키 이벤트 (결과 확인용)
+    // 키보드 엔터키 이벤트 (마이크 수동 종료 및 결과 확인용)
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             const practiceScreen = document.getElementById('practiceScreen');
-            if (practiceScreen.classList.contains('active') && pendingResult) {
-                window.confirmResult();
+            if (practiceScreen.classList.contains('active') && isRecording) {
+                window.toggleRecording();
             }
         }
     });
@@ -787,7 +786,7 @@
         navContainer.style.display = 'block';
     }
 
-    // 추가: 최종 단원 결과 화면 표시 함수
+    // 최종 단원 결과 화면 표시 함수
     window.showFinalResult = function() {
         document.getElementById('finalResultUnitTitle').innerText = currentPracticeUnit;
         document.getElementById('finalScoreDisplay').innerText = currentUnitTotalScore;
