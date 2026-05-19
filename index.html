@@ -24,7 +24,7 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             padding: 40px;
             width: 100%;
-            max-width: 650px;
+            max-width: 700px;
             text-align: center;
             position: relative;
         }
@@ -73,6 +73,12 @@
             margin: 20px 0;
             border: 2px dashed #ffeb3b;
         }
+        .sentence-counter {
+            font-size: 1em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
         
         #timerDisplay { font-size: 1.5em; color: #e74c3c; margin: 10px 0; }
         .feedback { font-size: 1.2em; margin-top: 20px; color: #2980b9; background-color: #f8f9fa; padding: 20px; border-radius: 15px;}
@@ -102,13 +108,11 @@
             text-align: left;
         }
         .unit-list-item {
-            display: flex;
-            justify-content: space-between;
             background: white;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid #ddd;
         }
         .delete-btn {
             background-color: #e74c3c;
@@ -136,6 +140,12 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
             letter-spacing: 1px; 
         }
+        .status-table th, .status-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .status-table th { background-color: #ffeaa7; }
     </style>
 </head>
 <body>
@@ -182,13 +192,14 @@
             <!-- 단원 목록 동적 렌더링 -->
         </select>
         <br><br>
-        <button onclick="window.startPractice()" style="font-size: 1.3em; padding: 15px 30px;">🚀 연습 시작하기</button>
+        <button onclick="window.startPractice(0)" style="font-size: 1.3em; padding: 15px 30px;">🚀 연습 시작하기</button>
         <button onclick="window.showLeaderboard()" style="background-color: #feca57; font-size: 1.3em; padding: 15px 30px;">🏆 명예의 전당</button>
     </div>
 
     <!-- 화면 3: 읽기 연습 방 -->
     <div id="practiceScreen" class="screen">
-        <h2 id="currentUnitTitle" style="color: #6c5ce7; font-size: 1.8em;">Unit 1</h2>
+        <h2 id="currentUnitTitle" style="color: #6c5ce7; font-size: 1.8em; margin-bottom: 5px;">Unit 1</h2>
+        <div class="sentence-counter" id="sentenceCounter">문장 1 / 3</div>
         <div class="target-text" id="targetSentence">Loading...</div>
         <div id="timerDisplay">준비!</div>
         
@@ -196,8 +207,7 @@
         
         <div class="feedback" id="feedbackArea"></div>
         <div id="practiceNavButtons" style="display: none; margin-top: 20px;">
-            <button onclick="window.startPractice()" style="background-color: #0984e3;">🔄 다시 연습하기</button>
-            <button onclick="window.showScreen('lobbyScreen')">🏠 메인으로 돌아가기</button>
+            <!-- 다음 문장 또는 메인으로 버튼이 동적으로 삽입됨 -->
         </div>
     </div>
 
@@ -237,14 +247,44 @@
         </div>
 
         <div class="dashboard-section">
-            <h3>📝 단원 관리</h3>
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <input type="text" id="newUnitName" placeholder="단원명 (예: Unit 1)" style="flex: 1;">
-                <input type="text" id="newUnitText" placeholder="읽기 문장 입력" style="flex: 2;">
+            <h3>📊 학생 학습 현황 조회</h3>
+            <select id="teacherStatusUnitSelect" style="width: 60%; max-width: 300px;">
+                <option value="ALL">전체 단원 보기</option>
+                <!-- 단원 옵션 동적 삽입 -->
+            </select>
+            <button onclick="window.loadStudentStatus()" style="background-color: #0984e3;">조회하기</button>
+            <div style="max-height: 250px; overflow-y: auto; margin-top: 15px; border-radius: 5px;">
+                <table class="status-table" style="width: 100%; border-collapse: collapse; background: white; font-size: 0.9em;">
+                    <thead>
+                        <tr>
+                            <th>단원명</th>
+                            <th>학년-반-번호</th>
+                            <th>이름</th>
+                            <th>정확도</th>
+                            <th>점수</th>
+                            <th>일시</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentStatusTableBody">
+                        <tr><td colspan="6" style="padding: 20px;">조회하기 버튼을 눌러주세요.</td></tr>
+                    </tbody>
+                </table>
             </div>
-            <button onclick="window.addUnit()" style="background-color: #2ecc71; width: 100%;">+ 새 단원 추가하기</button>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>📝 단원 및 문장 관리</h3>
+            <div style="background-color: white; padding: 15px; border-radius: 10px; border: 2px dashed #b2bec3; margin-bottom: 15px;">
+                <p style="margin-top:0; color:#2d3436; font-size:0.9em;">* 같은 '단원명'을 입력하고 문장을 추가하면 해당 단원에 여러 문장이 누적 등록됩니다.</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="newUnitName" placeholder="단원명 (예: Unit 1)" style="flex: 1;">
+                    <input type="text" id="newUnitText" placeholder="읽기 문장 입력" style="flex: 2;">
+                </div>
+                <button onclick="window.addUnitSentence()" style="background-color: #2ecc71; width: 100%;">+ 단원/문장 추가하기</button>
+            </div>
+            
             <div id="teacherUnitList" style="margin-top: 15px;">
-                <!-- 교사용 단원 리스트 -->
+                <!-- 교사용 단원/문장 리스트 -->
             </div>
         </div>
         
@@ -270,7 +310,7 @@
     const db = getFirestore(app);
 
     let useLocalMock = false; 
-    let loadedUnits = {};
+    let loadedUnits = {}; // 구조: { "Unit 1": ["문장 1", "문장 2", ...], "Unit 2": ["문장 1"] }
     let mockScores = [];
     
     // 설정값
@@ -282,13 +322,16 @@
     let recognition;
     let startTime;
     let timerInterval;
+    
+    // 현재 연습 중인 상태 저장
+    let currentPracticeUnit = "";
+    let currentSentenceIndex = 0;
 
     window.showScreen = function(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
     };
 
-    // 학교명 및 초기 설정 화면 반영 함수
     function applyGlobalSettings() {
         const titleEl = document.getElementById('mainAppTitle');
         if(titleEl) {
@@ -306,7 +349,6 @@
         if(settingPwEl) settingPwEl.value = globalTeacherPw;
     }
 
-    // 초기 데이터 로드
     async function initApp() {
         applyGlobalSettings();
         try {
@@ -315,17 +357,23 @@
             
             loadedUnits = {};
             querySnapshot.forEach((doc) => {
-                loadedUnits[doc.id] = doc.data().text;
+                const data = doc.data();
+                // 기존 문자열 형식(text)과 배열 형식(texts) 모두 대응 (하위 호환)
+                if (data.texts && Array.isArray(data.texts)) {
+                    loadedUnits[doc.id] = data.texts;
+                } else if (data.text) {
+                    loadedUnits[doc.id] = [data.text];
+                }
             });
             
             if(Object.keys(loadedUnits).length === 0) {
                 const defaultUnits = {
-                    "Unit 1. Hello": "Hello nice to meet you.",
-                    "Unit 2. My Favorite Food": "My favorite food is delicious pizza."
+                    "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
+                    "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
                 };
-                for (const [name, text] of Object.entries(defaultUnits)) {
-                    Promise.race([setDoc(doc(db, "units", name), { text: text }), timeout]).catch(e => {});
-                    loadedUnits[name] = text;
+                for (const [name, textsArray] of Object.entries(defaultUnits)) {
+                    Promise.race([setDoc(doc(db, "units", name), { texts: textsArray }), timeout]).catch(e => {});
+                    loadedUnits[name] = textsArray;
                 }
             }
 
@@ -350,8 +398,8 @@
             useLocalMock = true;
             document.getElementById('banner').style.display = 'block';
             loadedUnits = JSON.parse(localStorage.getItem('rs_localUnits')) || {
-                "Unit 1. Hello": "Hello nice to meet you.",
-                "Unit 2. My Favorite Food": "My favorite food is delicious pizza."
+                "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
+                "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
             };
         } finally {
             window.refreshUnitSelects();
@@ -359,10 +407,21 @@
     }
 
     window.refreshUnitSelects = function() {
-        const selects = [document.getElementById('unitSelect'), document.getElementById('leaderboardUnitSelect')];
-        selects.forEach(select => {
+        const selects = [
+            document.getElementById('unitSelect'), 
+            document.getElementById('leaderboardUnitSelect'),
+            document.getElementById('teacherStatusUnitSelect')
+        ];
+        
+        selects.forEach((select, index) => {
             if(!select) return;
-            select.innerHTML = '';
+            // 교사 현황 조회 드롭다운은 '전체' 옵션 유지
+            if(index === 2) {
+                select.innerHTML = '<option value="ALL">전체 단원 보기</option>';
+            } else {
+                select.innerHTML = '';
+            }
+            
             for (const unitName in loadedUnits) {
                 select.innerHTML += `<option value="${unitName}">${unitName}</option>`;
             }
@@ -385,13 +444,23 @@
         window.showScreen('lobbyScreen');
     };
 
-    window.startPractice = function() {
-        const unit = document.getElementById('unitSelect').value;
-        if(!unit) {
-            alert('단원을 먼저 선택해주세요.'); return;
+    // 연습 시작 (인덱스 파라미터 추가)
+    window.startPractice = function(startIndex = 0) {
+        if(startIndex === 0) {
+            currentPracticeUnit = document.getElementById('unitSelect').value;
         }
-        document.getElementById('currentUnitTitle').innerText = unit;
-        document.getElementById('targetSentence').innerText = loadedUnits[unit] || "문장을 찾을 수 없습니다.";
+        
+        if(!currentPracticeUnit || !loadedUnits[currentPracticeUnit]) {
+            alert('단원을 찾을 수 없습니다.'); return;
+        }
+
+        currentSentenceIndex = startIndex;
+        const sentences = loadedUnits[currentPracticeUnit];
+        
+        document.getElementById('currentUnitTitle').innerText = currentPracticeUnit;
+        document.getElementById('sentenceCounter').innerText = `문장 ${currentSentenceIndex + 1} / ${sentences.length}`;
+        document.getElementById('targetSentence').innerText = sentences[currentSentenceIndex] || "문장을 찾을 수 없습니다.";
+        
         document.getElementById('feedbackArea').innerHTML = '';
         document.getElementById('timerDisplay').innerText = '준비!';
         document.getElementById('practiceNavButtons').style.display = 'none';
@@ -486,7 +555,6 @@
     function calculateAndShowResult(target, recognized, timeTaken) {
         const cleanTarget = target.toLowerCase().replace(/[.,!?]/g, "");
         const cleanRecognized = recognized.toLowerCase().replace(/[.,!?]/g, "");
-        const unitName = document.getElementById('currentUnitTitle').innerText;
 
         const distance = getLevenshteinDistance(cleanTarget, cleanRecognized);
         const maxLength = Math.max(cleanTarget.length, cleanRecognized.length);
@@ -520,22 +588,41 @@
                     ✨ 기본 ${baseScore}점 + 스피드 보너스 ${speedBonus}점
                 </div>
                 <div style="font-size: 2rem; color: #ffeb3b; font-weight: 800; text-shadow: 0 0 10px rgba(255,235,59,0.5);">
-                    총 획득 포인트: ${finalScore}점!
+                    획득 포인트: ${finalScore}점!
                 </div>
                 <div id="saveStatus" style="font-size:0.9rem; color:#aaa; margin-top:10px;">기록 저장 중...☁️</div>
             `;
             
-            saveScoreToDB(unitName, finalScore, timeTaken, accuracy);
+            // 점수 저장 시, "단원명 - 문장 인덱스" 형태로 저장하여 식별 용이하게 함
+            const saveUnitName = `${currentPracticeUnit} (문장 ${currentSentenceIndex + 1})`;
+            saveScoreToDB(saveUnitName, finalScore, timeTaken, accuracy, currentPracticeUnit);
         }
 
         feedbackBox.innerHTML = feedbackHTML;
-        document.getElementById('practiceNavButtons').style.display = 'block';
+        
+        // 다중 문장 내비게이션 버튼 렌더링
+        const totalSentences = loadedUnits[currentPracticeUnit].length;
+        let navHTML = '';
+        
+        if (currentSentenceIndex < totalSentences - 1 && accuracy >= 80) {
+            // 통과했고 다음 문장이 있으면 '다음 문장' 버튼 출력
+            navHTML += `<button onclick="window.startPractice(${currentSentenceIndex + 1})" style="background-color: #2ecc71;">➡️ 다음 문장 연습하기</button>`;
+        } else {
+            // 통과 못했거나 마지막 문장이면 '다시 연습' 출력
+            navHTML += `<button onclick="window.startPractice(${currentSentenceIndex})" style="background-color: #0984e3;">🔄 현재 문장 다시하기</button>`;
+        }
+        navHTML += `<button onclick="window.showScreen('lobbyScreen')">🏠 메인으로 돌아가기</button>`;
+        
+        const navContainer = document.getElementById('practiceNavButtons');
+        navContainer.innerHTML = navHTML;
+        navContainer.style.display = 'block';
     }
 
-    async function saveScoreToDB(unit, score, timeTaken, accuracy) {
+    async function saveScoreToDB(displayUnitName, score, timeTaken, accuracy, baseUnitName) {
         try {
             const scoreData = {
-                unit: unit,
+                unit: displayUnitName,
+                baseUnit: baseUnitName, // 통계/랭킹용 기준 단원명
                 grade: currentUser.grade,
                 classNum: currentUser.classNum,
                 studentNum: currentUser.studentNum,
@@ -554,11 +641,12 @@
             }
             document.getElementById('saveStatus').innerText = "✅ 기록이 저장되었습니다!";
         } catch (e) {
-            console.warn("점수 저장 에러 (로컬 임시저장):", e);
+            console.warn("점수 저장 에러:", e);
             document.getElementById('saveStatus').innerText = "✅ 기록이 로컬에 임시 저장되었습니다! (서버 지연)";
             useLocalMock = true;
             mockScores.push({
-                unit: unit,
+                unit: displayUnitName,
+                baseUnit: baseUnitName,
                 grade: currentUser.grade,
                 classNum: currentUser.classNum,
                 studentNum: currentUser.studentNum,
@@ -588,7 +676,7 @@
 
         try {
             if(useLocalMock) {
-                const filtered = mockScores.filter(s => s.unit === unitName).sort((a,b) => b.score - a.score).slice(0,10);
+                const filtered = mockScores.filter(s => s.baseUnit === unitName).sort((a,b) => b.score - a.score).slice(0,10);
                 listArea.innerHTML = '';
                 if(filtered.length === 0) {
                     listArea.innerHTML = '<li style="justify-content:center;">아직 기록이 없습니다. 첫 기록의 주인공이 되어보세요!</li>';
@@ -596,10 +684,11 @@
                 }
                 filtered.forEach((data, index) => {
                     const rankStr = index === 0 ? "🥇 1위" : index === 1 ? "🥈 2위" : index === 2 ? "🥉 3위" : `${index+1}위`;
-                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name}</span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
+                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name} <span style="font-size:0.8em; color:#999;">(${data.unit})</span></span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
                 });
             } else {
-                const q = query(collection(db, "scores"), where("unit", "==", unitName), orderBy("score", "desc"), limit(10));
+                // 특정 단원의 문장들 점수 가져오기
+                const q = query(collection(db, "scores"), where("baseUnit", "==", unitName), orderBy("score", "desc"), limit(10));
                 const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
                 const querySnapshot = await Promise.race([getDocs(q), timeout]);
                 
@@ -613,7 +702,7 @@
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     const rankStr = rank === 1 ? "🥇 1위" : rank === 2 ? "🥈 2위" : rank === 3 ? "🥉 3위" : `${rank}위`;
-                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name}</span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
+                    listArea.innerHTML += `<li><span><b>${rankStr}</b> | ${data.grade}학년 ${data.classNum}반 ${data.name} <span style="font-size:0.8em; color:#999;">(${data.unit})</span></span> <span style="font-weight:bold; color:#e67e22;">${data.score}점</span></li>`;
                     rank++;
                 });
             }
@@ -666,7 +755,8 @@
         alert('설정이 성공적으로 저장되었습니다!');
     };
 
-    window.addUnit = async function() {
+    // 여러 문장 추가 지원 로직
+    window.addUnitSentence = async function() {
         const name = document.getElementById('newUnitName').value.trim();
         const text = document.getElementById('newUnitText').value.trim();
         
@@ -675,17 +765,21 @@
             return;
         }
 
-        loadedUnits[name] = text;
+        if(!loadedUnits[name]) {
+            loadedUnits[name] = []; // 새 단원일 경우 배열 초기화
+        }
+        loadedUnits[name].push(text); // 문장 추가
+        
         localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
         
-        document.getElementById('newUnitName').value = '';
+        // 입력창 비우기 (단원명은 유지하여 연속 추가 편의성 제공)
         document.getElementById('newUnitText').value = '';
         window.renderTeacherUnitList();
         window.refreshUnitSelects();
 
         if(!useLocalMock) {
             try {
-                const savePromise = setDoc(doc(db, "units", name), { text: text });
+                const savePromise = setDoc(doc(db, "units", name), { texts: loadedUnits[name] });
                 const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
                 await Promise.race([savePromise, timeout]);
             } catch (e) {
@@ -693,11 +787,43 @@
                 useLocalMock = true;
             }
         }
-        alert('성공적으로 등록되었습니다!');
+        alert(`'${name}' 단원에 문장이 추가되었습니다!`);
     };
 
+    // 개별 문장 삭제
+    window.deleteSentence = async function(unitName, sentenceIndex) {
+        if(confirm(`해당 문장을 삭제하시겠습니까?`)) {
+            loadedUnits[unitName].splice(sentenceIndex, 1);
+            
+            // 만약 문장이 하나도 안 남으면 단원 전체 삭제
+            if(loadedUnits[unitName].length === 0) {
+                delete loadedUnits[unitName];
+            }
+            
+            localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
+            window.renderTeacherUnitList();
+            window.refreshUnitSelects();
+
+            if(!useLocalMock) {
+                try {
+                    let savePromise;
+                    if(loadedUnits[unitName]) {
+                        savePromise = setDoc(doc(db, "units", unitName), { texts: loadedUnits[unitName] });
+                    } else {
+                        savePromise = deleteDoc(doc(db, "units", unitName));
+                    }
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+                    await Promise.race([savePromise, timeout]);
+                } catch (e) {
+                    useLocalMock = true;
+                }
+            }
+        }
+    };
+
+    // 단원 전체 삭제
     window.deleteUnit = async function(unitName) {
-        if(confirm(`'${unitName}' 단원을 삭제하시겠습니까?`)) {
+        if(confirm(`'${unitName}' 단원과 포함된 모든 문장을 삭제하시겠습니까?`)) {
             delete loadedUnits[unitName];
             localStorage.setItem('rs_localUnits', JSON.stringify(loadedUnits));
             window.renderTeacherUnitList();
@@ -709,26 +835,102 @@
                     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
                     await Promise.race([delPromise, timeout]);
                 } catch (e) {
-                    console.warn("DB 연결 지연. 로컬 삭제 완료.");
                     useLocalMock = true;
                 }
             }
         }
     };
 
+    // 교사 단원/문장 리스트 렌더링
     window.renderTeacherUnitList = function() {
         const listArea = document.getElementById('teacherUnitList');
         listArea.innerHTML = '';
-        for (const [name, text] of Object.entries(loadedUnits)) {
+        for (const [name, textsArray] of Object.entries(loadedUnits)) {
+            
+            let sentencesHTML = textsArray.map((text, idx) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background-color:#f8f9fa; padding:8px 12px; margin-top:5px; border-radius:5px;">
+                    <span style="font-size:0.9em; color:#555; text-align:left;">${idx + 1}. ${text}</span>
+                    <button class="delete-btn" style="padding: 4px 8px; font-size: 0.8em;" onclick="window.deleteSentence('${name}', ${idx})">삭제</button>
+                </div>
+            `).join('');
+
             listArea.innerHTML += `
                 <div class="unit-list-item">
-                    <div style="flex:1;">
-                        <b>${name}</b><br>
-                        <span style="font-size: 0.9em; color:#7f8c8d;">${text}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <b style="font-size: 1.2em; color: #2d3436;">${name} <span style="font-size:0.7em; color:#0984e3;">(총 ${textsArray.length}문장)</span></b>
+                        <button class="delete-btn" style="background-color: #d63031;" onclick="window.deleteUnit('${name}')">단원 전체 삭제</button>
                     </div>
-                    <button class="delete-btn" onclick="window.deleteUnit('${name}')">삭제</button>
+                    <div>
+                        ${sentencesHTML}
+                    </div>
                 </div>
             `;
+        }
+    };
+
+    // 학생 학습 현황 조회 (교사용 대시보드)
+    window.loadStudentStatus = async function() {
+        const unitFilter = document.getElementById('teacherStatusUnitSelect').value;
+        const tbody = document.getElementById('studentStatusTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px;">데이터를 불러오는 중입니다... ⏳</td></tr>';
+
+        try {
+            let fetchedScores = [];
+            
+            if(useLocalMock) {
+                fetchedScores = mockScores;
+                if(unitFilter !== "ALL") {
+                    fetchedScores = fetchedScores.filter(s => s.baseUnit === unitFilter);
+                }
+                fetchedScores.sort((a,b) => b.timestamp - a.timestamp); // 최신순 정렬
+            } else {
+                let q;
+                if(unitFilter === "ALL") {
+                    q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(50));
+                } else {
+                    q = query(collection(db, "scores"), where("baseUnit", "==", unitFilter), orderBy("timestamp", "desc"), limit(50));
+                }
+                
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000));
+                const querySnapshot = await Promise.race([getDocs(q), timeout]);
+                
+                querySnapshot.forEach(doc => {
+                    fetchedScores.push(doc.data());
+                });
+            }
+            
+            tbody.innerHTML = '';
+            
+            if(fetchedScores.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px;">조회된 학생 학습 기록이 없습니다.</td></tr>';
+                return;
+            }
+            
+            fetchedScores.forEach(data => {
+                // 날짜 포맷 변환
+                let dateObj = new Date();
+                if (data.timestamp && data.timestamp.toDate) {
+                    dateObj = data.timestamp.toDate();
+                } else if (data.timestamp) {
+                    dateObj = new Date(data.timestamp);
+                }
+                const dateStr = `${dateObj.getMonth()+1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-size:0.9em; font-weight:bold;">${data.unit}</td>
+                        <td>${data.grade}-${data.classNum}-${data.studentNum}</td>
+                        <td>${data.name}</td>
+                        <td style="color:${data.accuracy >= 80 ? '#00b894' : '#d63031'}; font-weight:bold;">${data.accuracy}%</td>
+                        <td style="font-weight:bold; color:#e67e22;">${data.score}</td>
+                        <td style="font-size:0.8em; color:#7f8c8d;">${dateStr}</td>
+                    </tr>
+                `;
+            });
+
+        } catch (e) {
+            console.error("현황 조회 에러:", e);
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; color: red;">데이터를 불러오는 데 실패했습니다. 네트워크를 확인해주세요.</td></tr>';
         }
     };
 
