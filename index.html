@@ -1382,7 +1382,7 @@
                 else if (rank === 3) rankBadge = '<span class="text-xl">🥉</span>';
 
                 const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }) : '-';
-                const safeName = sanitize(item.maskedName);
+                const safeName = sanitize(item.maskedName || maskStudentName(item.name || '학생'));
                 const safeUnit = sanitize(item.unit);
                 const safeSchool = item.schoolInfo ? sanitize(item.schoolInfo) + ' • ' : '';
 
