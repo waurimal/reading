@@ -771,7 +771,7 @@
 
         // ── 전역 상태 ──
         let loadedUnits = {}; // 24개 단원 목록 ({ unitName: [sentences...] })
-        let globalTeacherPw = "4657"; // 실제 설정 비밀번호
+        let globalTeacherPw = "1234"; // 기본 비밀번호 (교사 설정 및 WaurimalAuth와 연동)
         let globalSchoolName = "이의초등학교";
 
         let currentPracticeUnit = "";
@@ -846,6 +846,14 @@
 
         // 화면 전환 유틸
         window.showScreen = (screenId) => {
+            if (screenId === 'screen-teacher' && (!window.WaurimalAuth || !window.WaurimalAuth.isAuthenticated())) {
+                if (typeof window.openTeacherAuthModal === 'function') {
+                    window.openTeacherAuthModal();
+                } else {
+                    alert('교사 인증이 필요합니다.');
+                }
+                return;
+            }
             const screens = ['screen-home', 'screen-practice', 'screen-result', 'screen-teacher'];
             screens.forEach(id => {
                 const el = document.getElementById(id);
@@ -1365,6 +1373,7 @@
                 return;
             }
 
+            const sanitize = window.WaurimalSanitize || (s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
             container.innerHTML = displayList.map((item, index) => {
                 const rank = index + 1;
                 let rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 font-black text-xs">${rank}</span>`;
@@ -1373,6 +1382,9 @@
                 else if (rank === 3) rankBadge = '<span class="text-xl">🥉</span>';
 
                 const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }) : '-';
+                const safeName = sanitize(item.maskedName);
+                const safeUnit = sanitize(item.unit);
+                const safeSchool = item.schoolInfo ? sanitize(item.schoolInfo) + ' • ' : '';
 
                 return `
                     <div class="flex items-center justify-between p-2.5 bg-white border border-indigo-100 rounded-xl hover:border-indigo-300 transition shadow-2xs">
@@ -1382,11 +1394,11 @@
                             </div>
                             <div>
                                 <div class="font-black text-slate-800 text-xs flex items-center gap-1.5">
-                                    <span>${item.maskedName}</span>
-                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">${item.unit}</span>
+                                    <span>${safeName}</span>
+                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">${safeUnit}</span>
                                 </div>
                                 <div class="text-[10px] text-slate-400 font-medium">
-                                    ${item.schoolInfo ? item.schoolInfo + ' • ' : ''}${dateStr}
+                                    ${safeSchool}${dateStr}
                                 </div>
                             </div>
                         </div>
@@ -1413,6 +1425,11 @@
         // ── 4. 교사 전용 관리 화면 (24개 단원 + CSV + 학급 삭제) ──
         // ════════════════════════════════════════════════════════════════════
         window.openTeacherAuthModal = () => {
+            if (window.WaurimalAuth && window.WaurimalAuth.isAuthenticated()) {
+                window.showScreen('screen-teacher');
+                switchTeacherTab('units');
+                return;
+            }
             document.getElementById('teacherPwInput').value = '';
             document.getElementById('modal-teacher-auth').classList.remove('hidden');
         };
@@ -1422,8 +1439,8 @@
 
         window.verifyTeacher = () => {
             const input = document.getElementById('teacherPwInput').value.trim();
-            const waurimalPw = localStorage.getItem('waurimal_admin_pw');
-            if (input === globalTeacherPw || input === "4657" || input === "wauri1234" || input === "1234" || input === "0000" || (waurimalPw && input === waurimalPw)) {
+            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || globalTeacherPw || '1234'));
+            if (isValid) {
                 closeTeacherAuthModal();
                 window.showScreen('screen-teacher');
                 switchTeacherTab('units');
@@ -1529,13 +1546,14 @@
             }
 
             const sorted = [...hofAllScores].sort((a,b) => b.score - a.score);
+            const sanitize = window.WaurimalSanitize || (v => String(v || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
             tbody.innerHTML = sorted.map((s, idx) => `
                 <tr class="hover:bg-indigo-50/50 transition">
                     <td class="p-2.5 font-bold">${idx + 1}</td>
-                    <td class="p-2.5 font-black text-slate-800">${s.maskedName}</td>
-                    <td class="p-2.5 font-semibold text-slate-600">${s.schoolInfo || '-'}</td>
-                    <td class="p-2.5 font-semibold text-indigo-700">${s.unit}</td>
-                    <td class="p-2.5 font-black text-indigo-600">${s.score.toLocaleString()}점</td>
+                    <td class="p-2.5 font-black text-slate-800">${sanitize(s.maskedName)}</td>
+                    <td class="p-2.5 font-semibold text-slate-600">${s.schoolInfo ? sanitize(s.schoolInfo) : '-'}</td>
+                    <td class="p-2.5 font-semibold text-indigo-700">${sanitize(s.unit)}</td>
+                    <td class="p-2.5 font-black text-indigo-600">${Number(s.score || 0).toLocaleString()}점</td>
                     <td class="p-2.5 font-bold text-slate-600">${s.accuracy}%</td>
                     <td class="p-2.5 font-medium text-slate-500">${s.time}초</td>
                     <td class="p-2.5 text-slate-400 text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleDateString('ko-KR') : '-'}</td>
@@ -1572,9 +1590,13 @@
                 return;
             }
             try {
+                if (window.WaurimalAuth) {
+                    window.WaurimalAuth.setPw(input);
+                } else {
+                    localStorage.setItem('waurimal_admin_pw', input);
+                }
                 await setDoc(doc(db, "settings", "global"), { teacherPw: input }, { merge: true });
                 globalTeacherPw = input;
-                localStorage.setItem('waurimal_admin_pw', input);
                 document.getElementById('newTeacherPwInput').value = '';
                 showAlert("교사 비밀번호가 성공적으로 변경되었습니다.");
             } catch(e) {
