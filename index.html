@@ -853,29 +853,48 @@
 
         // GNB 프로필 연동
         function getStudentInfo() {
-            let info = { grade: '', class: '', number: '', name: '학생' };
+            if (window.WaurimalStudent && typeof window.WaurimalStudent.get === 'function') {
+                const sso = window.WaurimalStudent.get();
+                if (sso) {
+                    return {
+                        grade: String(sso.grade || ''),
+                        classNum: String(sso.classNum || ''),
+                        studentNum: String(sso.studentNum || ''),
+                        name: sso.name || '학생',
+                        school: sso.school || ''
+                    };
+                }
+            }
+            let info = { grade: '', classNum: '', studentNum: '', name: '학생', school: '' };
             try {
                 const saved = localStorage.getItem('waurimal_student_profile');
                 if (saved) {
                     const p = JSON.parse(saved);
-                    info = { ...info, ...p };
+                    info = {
+                        grade: String(p.grade || ''),
+                        classNum: String(p.classNum || p.class || ''),
+                        studentNum: String(p.studentNum || p.number || p.num || ''),
+                        name: p.name || p.studentName || '학생',
+                        school: p.school || ''
+                    };
                 }
             } catch(e) {}
             return info;
         }
 
-        function syncProfileDisplay() {
+        window.syncProfileDisplay = () => {
             const info = getStudentInfo();
             const disp = document.getElementById('homeStudentDisplay');
             if (disp) {
                 let text = info.name || '학생';
-                if (info.grade && info.class) {
-                    text = `${info.grade}학년 ${info.class}반 ${info.number ? info.number + '번 ' : ''}${info.name}`;
+                if (info.grade && info.classNum) {
+                    text = `${info.grade}학년 ${info.classNum}반 ${info.studentNum ? info.studentNum + '번 ' : ''}${info.name}`;
                 }
                 disp.innerText = maskStudentName(text);
             }
-        }
+        };
         window.addEventListener('storage', syncProfileDisplay);
+        window.addEventListener('waurimal_student_updated', syncProfileDisplay);
 
         // 화면 전환 유틸
         window.showScreen = (screenId) => {
@@ -1384,8 +1403,8 @@
             const studentInfo = getStudentInfo();
             const sName = studentInfo.name || '학생';
             const sGrade = studentInfo.grade || '6';
-            const sClass = studentInfo.class || '1';
-            const sNum = studentInfo.number || '1';
+            const sClass = studentInfo.classNum || studentInfo.class || '1';
+            const sNum = studentInfo.studentNum || studentInfo.number || '1';
 
             const scoreData = {
                 unit: unitName,
@@ -1736,7 +1755,7 @@
             }
         };
 
-        function renderReadingScoresTable() {
+        window.renderReadingScoresTable = function() {
             const tbody = document.getElementById('readingScoresTbody');
             if (!tbody) return;
 
