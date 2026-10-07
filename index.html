@@ -457,7 +457,7 @@
         <!-- ─────────────────────────────────────────── -->
         <!-- 2. 실시간 읽기 연습 화면 (screen-practice) -->
         <!-- ─────────────────────────────────────────── -->
-        <div  class="hidden max-w-2xl mx-auto w-full">
+        <div id="screen-practice" class="hidden max-w-2xl mx-auto w-full">
             <div class="reading-card space-y-5">
                 <!-- 상단 헤더: 단원명, 진행 문장 카운터, 소요시간 -->
                 <div class="flex items-center justify-between pb-3 border-b border-indigo-100">
@@ -919,7 +919,19 @@
                 console.warn("Settings load error:", e);
             }
 
-            // 24개 단원 목록 로드
+            // 24개 단원 목록 로컬 캐시 즉시 복원 (0ms 무지연 로딩)
+            try {
+                const cached = localStorage.getItem('waurimal_reading_units_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed && Object.keys(parsed).length > 0) {
+                        loadedUnits = parsed;
+                        renderUnitSelects();
+                    }
+                }
+            } catch(e){}
+
+            // 24개 단원 목록 Firestore 로드
             try {
                 const querySnapshot = await getDocs(collection(db, "units"));
                 let fbUnits = {};
@@ -934,7 +946,8 @@
 
                 if (Object.keys(fbUnits).length > 0) {
                     loadedUnits = fbUnits;
-                } else {
+                    try { localStorage.setItem('waurimal_reading_units_cache', JSON.stringify(fbUnits)); } catch(e){}
+                } else if (Object.keys(loadedUnits).length === 0) {
                     loadedUnits = {
                         "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
                         "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
@@ -942,6 +955,12 @@
                 }
             } catch(e) {
                 console.error("Units load error:", e);
+                if (Object.keys(loadedUnits).length === 0) {
+                    loadedUnits = {
+                        "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
+                        "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
+                    };
+                }
             }
 
             renderUnitSelects();
@@ -1045,7 +1064,25 @@
             pendingResult = null;
         }
 
-        // 원어민 발음 TTS 듣기
+        // 원어민 발음 TTS 듣기 (Frog/Street 표준 고품질 음성 엔진)
+        function getEnglishVoice() {
+            if (!('speechSynthesis' in window)) return null;
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices || voices.length === 0) return null;
+            const preferredNames = ['Google US English', 'Microsoft Jenny', 'Microsoft Aria', 'Microsoft Guy', 'Microsoft David', 'Microsoft Zira', 'Samantha', 'Alex'];
+            for (const name of preferredNames) {
+                const found = voices.find(v => v.name && v.name.includes(name));
+                if (found) return found;
+            }
+            const enUS = voices.find(v => v.lang === 'en-US' || v.lang === 'en_US');
+            if (enUS) return enUS;
+            return voices.find(v => v.lang && v.lang.startsWith('en')) || null;
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => { getEnglishVoice(); };
+        }
+
         window.playTargetTTS = () => {
             const text = document.getElementById('targetSentence').innerText;
             if ('speechSynthesis' in window) {
@@ -1053,6 +1090,8 @@
                 const utter = new SpeechSynthesisUtterance(text);
                 utter.lang = 'en-US';
                 utter.rate = 0.85;
+                const voice = getEnglishVoice();
+                if (voice) utter.voice = voice;
                 window.speechSynthesis.speak(utter);
             } else {
                 showAlert("사용 중인 브라우저에서는 듣기 기능을 지원하지 않습니다.");
@@ -1491,6 +1530,7 @@
             try {
                 await setDoc(doc(db, "units", unitName), { texts: sentences });
                 showAlert(`[${unitName}] 단원의 ${sentences.length}개 문장이 성공적으로 저장되었습니다!`);
+                try { localStorage.setItem('waurimal_reading_units_cache', JSON.stringify(loadedUnits)); } catch(e){}
                 renderUnitSelects();
                 document.getElementById('teacherUnitSelect').value = unitName;
                 loadTeacherUnitData();
@@ -1509,6 +1549,7 @@
             }
 
             loadedUnits[trimmed] = ["Sample sentence."];
+            try { localStorage.setItem('waurimal_reading_units_cache', JSON.stringify(loadedUnits)); } catch(e){}
             renderUnitSelects();
             document.getElementById('teacherUnitSelect').value = trimmed;
             loadTeacherUnitData();
@@ -1530,6 +1571,7 @@
             try {
                 await deleteDoc(doc(db, "units", unitName));
                 showAlert("단원이 성공적으로 삭제되었습니다.");
+                try { localStorage.setItem('waurimal_reading_units_cache', JSON.stringify(loadedUnits)); } catch(e){}
                 renderUnitSelects();
             } catch(e) {
                 showAlert("삭제 실패: " + e.message);
