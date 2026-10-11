@@ -1590,8 +1590,9 @@
             }
 
             const sanitize = window.WaurimalSanitize || (s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
-            container.innerHTML = displayList.map((item, index) => {
-                const rank = index + 1;
+            container.innerHTML = displayList.map((item, index, arr) => {
+                // 동점자 동일 순위 및 차순위 건너뛰기 (1등 2명이면 1등, 1등, 3등)
+                const rank = arr.findIndex(x => Number(x.score || 0) <= Number(item.score || 0)) + 1;
                 let rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 font-black text-xs">${rank}</span>`;
                 if (rank === 1) rankBadge = '<span class="text-xl">🥇</span>';
                 else if (rank === 2) rankBadge = '<span class="text-xl">🥈</span>';
@@ -1789,9 +1790,12 @@
             }
 
             const sanitize = window.WaurimalSanitize || (v => String(v || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
-            tbody.innerHTML = filtered.map((s, idx) => `
+            tbody.innerHTML = filtered.map((s, idx, arr) => {
+                // 동점자 동일 순위 및 차순위 건너뛰기 (점수순 정렬 시)
+                const rank = (sortBy === 'score') ? (arr.findIndex(x => Number(x.score || 0) <= Number(s.score || 0)) + 1) : (idx + 1);
+                return `
                 <tr class="hover:bg-indigo-50/50 transition">
-                    <td class="p-2.5 font-bold">${idx + 1}</td>
+                    <td class="p-2.5 font-bold">${rank}</td>
                     <td class="p-2.5 font-black text-slate-800">${sanitize(s.maskedName)}</td>
                     <td class="p-2.5 font-semibold text-slate-600">${s.schoolInfo ? sanitize(s.schoolInfo) : '-'}</td>
                     <td class="p-2.5 font-semibold text-indigo-700">${sanitize(s.unit)}</td>
@@ -1800,7 +1804,8 @@
                     <td class="p-2.5 font-medium text-slate-500">${s.time}초</td>
                     <td class="p-2.5 text-slate-400 text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleDateString('ko-KR') : '-'}</td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
 
         window.downloadReadingScoresCSV = () => {
