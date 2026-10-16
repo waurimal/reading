@@ -802,7 +802,7 @@
 
         // ── 전역 상태 ──
         let loadedUnits = {}; // 24개 단원 목록 ({ unitName: [sentences...] })
-        let globalTeacherPw = "1234"; // 기본 비밀번호 (교사 설정 및 WaurimalAuth와 연동)
+        let globalTeacherPw = "4657"; // 기본 비밀번호 (교사 설정 및 WaurimalAuth와 연동)
         let globalSchoolName = "이의초등학교";
 
         let currentPracticeUnit = "";
@@ -1656,7 +1656,7 @@
 
         window.verifyTeacher = () => {
             const input = document.getElementById('teacherPwInput').value.trim();
-            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || globalTeacherPw || '1234'));
+            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || globalTeacherPw || '4657'));
             if (isValid) {
                 closeTeacherAuthModal();
                 window.showScreen('screen-teacher');
