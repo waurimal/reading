@@ -285,6 +285,17 @@
             font-weight: 500;
         }
 
+        /* 도전 모드 선택 버튼 */
+        .mode-btn {
+            cursor: pointer;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .mode-btn:active {
+            transform: scale(0.98);
+        }
+
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
@@ -322,8 +333,38 @@
                         <select id="unitSelect" onchange="updateSelectedUnitInfo()" class="w-full p-3 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500">
                             <!-- 24개 단원 동적 로드 -->
                         </select>
+
+                        <!-- 🎯 도전 모드 선택 (🌱 일반 모드 vs 🔥 고급 모드 더블 스코어) -->
+                        <div class="space-y-1.5 pt-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-indigo-900">🎯 도전 난이도 / 모드 선택</span>
+                                <span id="modeBonusBadge" class="text-[10px] font-black text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">
+                                    🌱 일반 모드 (기본 1x)
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="btn-mode-normal" onclick="setPracticeMode('normal')" class="mode-btn p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition relative flex flex-col justify-between shadow-xs ring-2 ring-indigo-200">
+                                    <div class="flex items-center justify-between w-full mb-1">
+                                        <span class="text-xs font-black text-indigo-900">🌱 일반 모드</span>
+                                        <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">1x 점수</span>
+                                    </div>
+                                    <span class="text-[11px] text-slate-500 font-medium">영어 문장 보며 읽기</span>
+                                </button>
+                                <button type="button" id="btn-mode-advanced" onclick="setPracticeMode('advanced')" class="mode-btn p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-rose-50/50 text-left transition relative flex flex-col justify-between">
+                                    <div class="flex items-center justify-between w-full mb-1">
+                                        <span class="text-xs font-black text-rose-600 flex items-center gap-1">
+                                            <i class="fa-solid fa-fire text-rose-500"></i>
+                                            <span>고급 모드</span>
+                                        </span>
+                                        <span class="text-[10px] font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded animate-pulse">2x 더블!</span>
+                                    </div>
+                                    <span class="text-[11px] text-slate-500 font-medium">해석만 보고 영어로 읽기</span>
+                                </button>
+                            </div>
+                        </div>
+
                         <p class="text-[11px] text-slate-500 font-medium leading-relaxed">
-                            선택한 단원의 문장들을 원어민 음성으로 듣고, 마이크에 대고 직접 발음하여 스피드와 정확도를 평가받습니다.
+                            선택한 모드에 맞춰 마이크에 대고 직접 발음하여 스피드와 정확도를 평가받습니다.
                         </p>
                         <button type="button" onclick="startReadingPractice()" class="hero-btn">
                             <div class="flex items-center gap-3">
@@ -349,7 +390,8 @@
                         <h3 class="font-black text-slate-800 text-sm">영어 읽기 고득점 꿀팁</h3>
                     </div>
                     <ul class="text-xs text-slate-600 space-y-2 leading-relaxed">
-                        <li>• <strong>원어민 음성 듣기</strong>: 🔊 듣기 버튼을 눌러 원어민 발음과 억양을 먼저 확인하세요.</li>
+                        <li>• <strong class="text-rose-600">🔥 고급 모드 (점수 더블 2x)</strong>: 한국어 해석만 보고 머릿속으로 영어를 떠올려 말하면 <strong>최종 점수가 2배(더블!)</strong>로 계산되어 명예의 전당 1위 등극에 유리합니다!</li>
+                        <li>• <strong>원어민 음성 듣기</strong>: 🔊 듣기 버튼을 눌러 원어민 발음과 억양을 먼저 확인하세요. (일반 모드 지원, 고급 모드는 발화 후 정답 확인)</li>
                         <li>• <strong>정확한 발음</strong>: 단어 끝소리(자음)까지 명확하고 또박또박 발음할수록 높은 정확도를 얻습니다.</li>
                         <li>• <strong>스피드 보너스</strong>: 망설이지 않고 자연스러운 속도로 읽으면 추가 스피드 점수가 부여됩니다.</li>
                         <li>• <strong>크롬(Chrome) 브라우저 권장</strong>: 마이크 권한을 허용하여 최적의 AI 음성 인식을 경험하세요.</li>
@@ -414,10 +456,15 @@
                         </button>
                     </div>
 
-                    <!-- 2. 단원별 필터 -->
-                    <div class="mb-2">
+                    <!-- 2. 단원 및 난이도 모드 필터 -->
+                    <div class="grid grid-cols-2 gap-2 mb-2">
                         <select id="hof-filter-unit" onchange="filterHofList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="ALL">전체 단원</option>
+                        </select>
+                        <select id="hof-filter-mode" onchange="filterHofList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ALL">전체 난이도</option>
+                            <option value="normal">🌱 일반 모드</option>
+                            <option value="advanced">🔥 고급 모드 (2x)</option>
                         </select>
                     </div>
 
@@ -462,7 +509,10 @@
                 <!-- 상단 헤더: 단원명, 진행 문장 카운터, 소요시간 -->
                 <div class="flex items-center justify-between pb-3 border-b border-indigo-100">
                     <div>
-                        <span id="currentUnitTitle" class="text-sm font-black text-indigo-800 block">Unit 1</span>
+                        <div class="flex items-center gap-2">
+                            <span id="currentUnitTitle" class="text-sm font-black text-indigo-800 block">Unit 1</span>
+                            <span id="currentModeBadge" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">🌱 일반 모드</span>
+                        </div>
                         <span id="sentenceCounter" class="text-xs font-bold text-slate-400">문장 1/8</span>
                     </div>
                     <div class="flex items-center gap-3">
@@ -475,16 +525,46 @@
                     </div>
                 </div>
 
-                <!-- 목표 영어 문장 카드 -->
-                <div class="p-6 bg-indigo-50/60 border border-indigo-100 rounded-2xl text-center space-y-3">
-                    <span class="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider block">따라 읽을 문장</span>
-                    <div id="targetSentence" class="text-xl md:text-2xl font-black text-slate-800 leading-snug tracking-wide">
-                        Hello, nice to meet you.
+                <!-- 목표 문장 카드 (일반 모드 vs 고급 모드 동적 렌더링) -->
+                <div id="targetCardContainer" class="p-6 bg-indigo-50/60 border border-indigo-100 rounded-2xl text-center space-y-3 transition-all">
+                    <div class="flex items-center justify-center">
+                        <span id="targetLabel" class="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider block">따라 읽을 문장</span>
                     </div>
-                    <div>
-                        <button type="button" onclick="playTargetTTS()" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shadow-2xs transition">
+
+                    <!-- 1. 고급 모드 전용: 한국어 해석 박스 (메인으로 강조) -->
+                    <div id="advancedMeaningBox" class="hidden p-4 bg-white/95 border-2 border-rose-300 rounded-xl shadow-xs space-y-1">
+                        <span class="text-[10px] font-black text-rose-600 uppercase tracking-wider flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-fire text-rose-500"></i> 해석을 보고 영어로 말하세요! (점수 2배 더블)
+                        </span>
+                        <div id="targetKoreanMeaning" class="text-xl md:text-2xl font-black text-slate-900 leading-snug">
+                            <!-- 한국어 해석 동적 출력 -->
+                        </div>
+                    </div>
+
+                    <!-- 2. 영어 문장 박스 (일반 모드는 항상 노출, 고급 모드는 발화 후 정답 공개) -->
+                    <div id="targetSentenceWrap" class="relative">
+                        <div id="targetSentence" class="text-xl md:text-2xl font-black text-slate-800 leading-snug tracking-wide">
+                            Hello, nice to meet you.
+                        </div>
+                        <!-- 고급 모드 블라인드 마스크 -->
+                        <div id="targetSentenceBlind" class="hidden py-4 px-3 bg-slate-100/90 border-2 border-dashed border-rose-200 rounded-xl text-center">
+                            <div class="flex items-center justify-center gap-2 text-rose-700 text-xs font-black">
+                                <i class="fa-solid fa-lock text-rose-500 text-sm"></i>
+                                <span>영어 문장 가림 (마이크로 말하면 정답이 공개되고 2배 점수가 부여됩니다!)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 일반 모드 보조 해석 표시 -->
+                    <div id="normalSubMeaning" class="hidden text-xs font-bold text-slate-500">
+                        <!-- 뜻: ... -->
+                    </div>
+
+                    <!-- 4. 원어민 발음 듣기 버튼 -->
+                    <div id="targetTTSContainer">
+                        <button type="button" id="targetTTSBtn" onclick="playTargetTTS()" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shadow-2xs transition">
                             <i class="fa-solid fa-volume-high"></i>
-                            <span>원어민 발음 듣기</span>
+                            <span id="targetTTSText">원어민 발음 듣기</span>
                         </button>
                     </div>
                 </div>
@@ -527,11 +607,13 @@
                 <div class="text-5xl animate-bounce">🎉</div>
                 <div>
                     <h2 class="text-2xl font-black text-indigo-800 mb-1">스프린트 완주 성공!</h2>
-                    <p id="finalResultUnitTitle" class="text-xs text-slate-500 font-bold">L01 단원 연습 완료</p>
+                    <div id="finalResultUnitTitle" class="text-xs text-slate-500 font-bold space-y-1">
+                        <div>L01 단원 연습 완료</div>
+                    </div>
                 </div>
 
-                <div class="p-5 bg-indigo-50 border border-indigo-200 rounded-2xl">
-                    <span class="text-xs text-indigo-600 font-bold block mb-1">최종 획득 점수</span>
+                <div id="finalScoreCard" class="p-5 bg-indigo-50 border border-indigo-200 rounded-2xl relative">
+                    <span id="finalScoreLabel" class="text-xs text-indigo-600 font-bold block mb-1">최종 획득 점수</span>
                     <span id="finalScoreDisplay" class="text-4xl font-black text-indigo-700 tracking-wider">105</span>
                     <span class="text-sm font-bold text-indigo-600 ml-1">점</span>
                 </div>
@@ -595,7 +677,11 @@
                             <label class="text-[11px] font-bold text-slate-600">단원 문장 목록 (줄바꿈(Enter)으로 문장 구분):</label>
                             <span id="teacherSentenceCount" class="text-[10px] text-slate-400 font-bold">0개 문장</span>
                         </div>
-                        <textarea id="teacherUnitTextarea" rows="8" placeholder="문장 1&#10;문장 2&#10;문장 3..." class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none leading-relaxed custom-scrollbar"></textarea>
+                        <p class="text-[11px] text-indigo-700 bg-indigo-50/70 p-2.5 rounded-xl font-medium mb-2 border border-indigo-100 leading-relaxed">
+                            💡 <strong>고급 읽기 모드 팁</strong>: 문장을 <code class="bg-white px-1.5 py-0.5 rounded border border-indigo-200 text-indigo-800 font-bold">영어 문장 : 한국어 해석</code> 형태로 입력하시면 학생이 한국어 해석만 보고 영어로 말하는 <strong>고급 읽기 모드 (점수 더블 2x)</strong>가 완벽하게 지원됩니다.<br>
+                            (예시: <span class="text-slate-800 font-semibold">Hello, nice to meet you. : 안녕하세요, 만나서 반갑습니다.</span>)
+                        </p>
+                        <textarea id="teacherUnitTextarea" rows="8" placeholder="Hello, nice to meet you. : 안녕하세요, 만나서 반갑습니다.&#10;How are you today? : 오늘 기분은 어떠세요?..." class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none leading-relaxed custom-scrollbar"></textarea>
                     </div>
 
                     <button type="button" onclick="saveTeacherUnit()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow transition">
@@ -637,6 +723,11 @@
                         <select id="teacher-filter-unit" onchange="renderReadingScoresTable()" class="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="ALL">전체 단원/주제</option>
                         </select>
+                        <select id="teacher-filter-mode" onchange="renderReadingScoresTable()" class="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ALL">전체 난이도</option>
+                            <option value="normal">🌱 일반 모드</option>
+                            <option value="advanced">🔥 고급 모드 (2x)</option>
+                        </select>
                         <select id="teacher-sort-by" onchange="renderReadingScoresTable()" class="p-2 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="recent">최신 기록순 ⏱️</option>
                             <option value="score">높은 점수순 🏆</option>
@@ -650,6 +741,7 @@
                                     <th class="p-2.5">이름</th>
                                     <th class="p-2.5">학적</th>
                                     <th class="p-2.5">단원</th>
+                                    <th class="p-2.5">난이도</th>
                                     <th class="p-2.5">점수</th>
                                     <th class="p-2.5">정확도</th>
                                     <th class="p-2.5">시간</th>
@@ -806,8 +898,116 @@
         let globalSchoolName = "이의초등학교";
 
         let currentPracticeUnit = "";
+        let currentPracticeMode = "normal"; // "normal" | "advanced"
         let currentSentenceIndex = 0;
         let isRecording = false;
+
+        // ── 내장 기본 번역 사전 (콜론이 없는 문장 자동 해석 매핑 지원) ──
+        const BUILTIN_TRANSLATIONS = {
+            "hello, nice to meet you.": "안녕하세요, 만나서 반갑습니다.",
+            "how are you today?": "오늘 기분은 어떠세요?",
+            "how are you doing today?": "오늘 어떻게 지내시나요?",
+            "my favorite food is delicious pizza.": "내가 가장 좋아하는 음식은 맛있는 피자입니다.",
+            "i like apples and bananas.": "나는 사과와 바나나를 좋아합니다.",
+            "good morning! have a nice day.": "좋은 아침이에요! 좋은 하루 보내세요.",
+            "i am very happy to see you.": "당신을 만나서 정말 기뻐요.",
+            "see you tomorrow, take care!": "내일 또 만나요, 잘 지내요!",
+            "what would you like to eat for lunch?": "점심으로 무엇을 드시고 싶으신가요?",
+            "ice cream is my favorite summer dessert.": "아이스크림은 내가 제일 좋아하는 여름 디저트입니다.",
+            "eating healthy vegetables is good for you.": "건강한 채소를 먹는 것은 몸에 좋습니다.",
+            "i wake up early at seven in the morning.": "나는 아침 7시에 일찍 일어납니다.",
+            "i brush my teeth and wash my face every day.": "나는 매일 이를 닦고 세수를 합니다.",
+            "we walk to school with our close friends.": "우리는 친한 친구들과 함께 학교로 걸어갑니다.",
+            "i read interesting books in the library.": "나는 도서관에서 재미있는 책을 읽습니다.",
+            "doing my homework makes me feel proud.": "숙제를 끝내면 뿌듯한 기분이 듭니다.",
+            "it is sunny and warm outside today.": "오늘은 밖이 화창하고 따뜻합니다.",
+            "put on your warm coat because it is cold.": "날씨가 추우니 따뜻한 외투를 입으세요.",
+            "spring brings beautiful blooming flowers.": "봄은 아름답게 피어나는 꽃들을 데려옵니다.",
+            "i enjoy swimming in the sea during summer.": "나는 여름 동안 바다에서 수영하는 것을 즐깁니다.",
+            "leaves turn yellow and red in autumn.": "가을에는 나뭇잎이 노랗고 붉게 물듭니다.",
+            "welcome to our english classroom.": "우리 영어 교실에 오신 것을 환영합니다.",
+            "please open your textbook to page ten.": "교과서 10쪽을 펼쳐 주세요.",
+            "raise your hand if you know the right answer.": "정답을 알고 있다면 손을 들어주세요.",
+            "let's study english happily together.": "다 함께 즐겁게 영어를 공부해 봅시다.",
+            "nice to meet you.": "만나서 반갑습니다.",
+            "hello.": "안녕하세요.",
+            "good morning.": "좋은 아침입니다.",
+            "good afternoon.": "좋은 오후입니다.",
+            "good evening.": "좋은 저녁입니다.",
+            "good bye.": "안녕히 가세요.",
+            "see you later.": "나중에 또 봐요.",
+            "thank you very much.": "정말 감사합니다.",
+            "you are welcome.": "천만에요.",
+            "i am sorry.": "죄송합니다.",
+            "that is okay.": "괜찮습니다.",
+            "how is the weather today?": "오늘 날씨가 어때요?",
+            "what time is it now?": "지금 몇 시인가요?",
+            "where are you from?": "어디서 오셨나요?",
+            "i am from korea.": "저는 한국에서 왔습니다.",
+            "what is your name?": "이름이 무엇인가요?",
+            "my name is minsu.": "제 이름은 민수입니다."
+        };
+
+        // 문장 파싱 유틸: "영어 문장 : 한국어 해석" 형태 및 객체 분리 지원
+        function parseSentenceItem(item) {
+            if (!item) return { english: '', korean: '' };
+            if (typeof item === 'object') {
+                return {
+                    english: String(item.sentence || item.english || item.text || '').trim(),
+                    korean: String(item.meaning || item.korean || item.translation || '').trim()
+                };
+            }
+            const str = String(item).trim();
+            if (str.includes(':')) {
+                const idx = str.indexOf(':');
+                const eng = str.substring(0, idx).trim();
+                const kor = str.substring(idx + 1).trim();
+                return { english: eng, korean: kor };
+            }
+            const normKey = str.toLowerCase().replace(/\s+/g, ' ').trim();
+            if (BUILTIN_TRANSLATIONS[normKey]) {
+                return { english: str, korean: BUILTIN_TRANSLATIONS[normKey] };
+            }
+            const cleanKey = normKey.replace(/[.,!?]/g, '').trim();
+            for (const [k, v] of Object.entries(BUILTIN_TRANSLATIONS)) {
+                if (k.replace(/[.,!?]/g, '').trim() === cleanKey) {
+                    return { english: str, korean: v };
+                }
+            }
+            return { english: str, korean: '' };
+        }
+
+        // 도전 모드 전환 함수
+        window.setPracticeMode = (mode) => {
+            currentPracticeMode = mode;
+            const btnNormal = document.getElementById('btn-mode-normal');
+            const btnAdv = document.getElementById('btn-mode-advanced');
+            const badge = document.getElementById('modeBonusBadge');
+
+            if (mode === 'advanced') {
+                if (btnAdv) {
+                    btnAdv.className = "mode-btn p-3 rounded-xl border-2 border-rose-500 bg-rose-50/70 text-left transition relative flex flex-col justify-between shadow-xs ring-2 ring-rose-300";
+                }
+                if (btnNormal) {
+                    btnNormal.className = "mode-btn p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-left transition relative flex flex-col justify-between";
+                }
+                if (badge) {
+                    badge.className = "text-[10px] font-black text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-full animate-pulse border border-rose-200";
+                    badge.innerHTML = '🔥 고급 모드 (점수 2배 더블!)';
+                }
+            } else {
+                if (btnNormal) {
+                    btnNormal.className = "mode-btn p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition relative flex flex-col justify-between shadow-xs ring-2 ring-indigo-200";
+                }
+                if (btnAdv) {
+                    btnAdv.className = "mode-btn p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-rose-50/50 text-left transition relative flex flex-col justify-between";
+                }
+                if (badge) {
+                    badge.className = "text-[10px] font-black text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full";
+                    badge.innerHTML = '🌱 일반 모드 (기본 1x)';
+                }
+            }
+        };
         let recognition = null;
         let startTime = null;
         let timerInterval = null;
@@ -1001,16 +1201,68 @@
                     try { localStorage.setItem('waurimal_reading_units_cache', JSON.stringify(fbUnits)); } catch(e){}
                 } else if (Object.keys(loadedUnits).length === 0) {
                     loadedUnits = {
-                        "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
-                        "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
+                        "Unit 1. Greetings & Hello": [
+                            "Hello, nice to meet you. : 안녕하세요, 만나서 반갑습니다.",
+                            "Good morning! Have a nice day. : 좋은 아침이에요! 좋은 하루 보내세요.",
+                            "How are you doing today? : 오늘 기분은 어떠세요?",
+                            "I am very happy to see you. : 당신을 만나서 정말 기뻐요.",
+                            "See you tomorrow, take care! : 내일 또 만나요, 잘 지내요!"
+                        ],
+                        "Unit 2. My Favorite Food": [
+                            "My favorite food is delicious pizza. : 내가 가장 좋아하는 음식은 맛있는 피자입니다.",
+                            "I like apples and bananas. : 나는 사과와 바나나를 좋아합니다.",
+                            "What would you like to eat for lunch? : 점심으로 무엇을 드시고 싶으신가요?",
+                            "Ice cream is my favorite summer dessert. : 아이스크림은 내가 제일 좋아하는 여름 디저트입니다.",
+                            "Eating healthy vegetables is good for you. : 건강한 채소를 먹는 것은 몸에 좋습니다."
+                        ],
+                        "Unit 3. Daily Life & Habits": [
+                            "I wake up early at seven in the morning. : 나는 아침 7시에 일어납니다.",
+                            "I brush my teeth and wash my face every day. : 나는 매일 이를 닦고 세수를 합니다.",
+                            "We walk to school with our close friends. : 우리는 친한 친구들과 함께 학교로 걸어갑니다.",
+                            "I read interesting books in the library. : 나는 도서관에서 재미있는 책을 읽습니다.",
+                            "Doing my homework makes me feel proud. : 숙제를 끝내면 뿌듯한 기분이 듭니다."
+                        ],
+                        "Unit 4. Weather & Seasons": [
+                            "It is sunny and warm outside today. : 오늘은 밖이 화창하고 따뜻합니다.",
+                            "Put on your warm coat because it is cold. : 날씨가 추우니 따뜻한 외투를 입으세요.",
+                            "Spring brings beautiful blooming flowers. : 봄은 아름답게 피어나는 꽃들을 데려옵니다.",
+                            "I enjoy swimming in the sea during summer. : 나는 여름 동안 바다에서 수영하는 것을 즐깁니다.",
+                            "Leaves turn yellow and red in autumn. : 가을에는 나뭇잎이 노랗고 붉게 물듭니다."
+                        ]
                     };
                 }
             } catch(e) {
                 console.error("Units load error:", e);
                 if (Object.keys(loadedUnits).length === 0) {
                     loadedUnits = {
-                        "Unit 1. Hello": ["Hello, nice to meet you.", "How are you today?"],
-                        "Unit 2. My Favorite Food": ["My favorite food is delicious pizza.", "I like apples and bananas."]
+                        "Unit 1. Greetings & Hello": [
+                            "Hello, nice to meet you. : 안녕하세요, 만나서 반갑습니다.",
+                            "Good morning! Have a nice day. : 좋은 아침이에요! 좋은 하루 보내세요.",
+                            "How are you doing today? : 오늘 기분은 어떠세요?",
+                            "I am very happy to see you. : 당신을 만나서 정말 기뻐요.",
+                            "See you tomorrow, take care! : 내일 또 만나요, 잘 지내요!"
+                        ],
+                        "Unit 2. My Favorite Food": [
+                            "My favorite food is delicious pizza. : 내가 가장 좋아하는 음식은 맛있는 피자입니다.",
+                            "I like apples and bananas. : 나는 사과와 바나나를 좋아합니다.",
+                            "What would you like to eat for lunch? : 점심으로 무엇을 드시고 싶으신가요?",
+                            "Ice cream is my favorite summer dessert. : 아이스크림은 내가 제일 좋아하는 여름 디저트입니다.",
+                            "Eating healthy vegetables is good for you. : 건강한 채소를 먹는 것은 몸에 좋습니다."
+                        ],
+                        "Unit 3. Daily Life & Habits": [
+                            "I wake up early at seven in the morning. : 나는 아침 7시에 일어납니다.",
+                            "I brush my teeth and wash my face every day. : 나는 매일 이를 닦고 세수를 합니다.",
+                            "We walk to school with our close friends. : 우리는 친한 친구들과 함께 학교로 걸어갑니다.",
+                            "I read interesting books in the library. : 나는 도서관에서 재미있는 책을 읽습니다.",
+                            "Doing my homework makes me feel proud. : 숙제를 끝내면 뿌듯한 기분이 듭니다."
+                        ],
+                        "Unit 4. Weather & Seasons": [
+                            "It is sunny and warm outside today. : 오늘은 밖이 화창하고 따뜻합니다.",
+                            "Put on your warm coat because it is cold. : 날씨가 추우니 따뜻한 외투를 입으세요.",
+                            "Spring brings beautiful blooming flowers. : 봄은 아름답게 피어나는 꽃들을 데려옵니다.",
+                            "I enjoy swimming in the sea during summer. : 나는 여름 동안 바다에서 수영하는 것을 즐깁니다.",
+                            "Leaves turn yellow and red in autumn. : 가을에는 나뭇잎이 노랗고 붉게 물듭니다."
+                        ]
                     };
                 }
             }
@@ -1115,17 +1367,93 @@
                 return;
             }
 
-            const sentence = list[currentSentenceIndex];
+            const rawSentence = list[currentSentenceIndex];
+            const parsed = parseSentenceItem(rawSentence);
+
             document.getElementById('currentUnitTitle').innerText = currentPracticeUnit;
             document.getElementById('sentenceCounter').innerText = `문장 ${currentSentenceIndex + 1}/${list.length}`;
-            document.getElementById('targetSentence').innerText = sentence;
             document.getElementById('timerDisplay').innerText = "⏱️ 0.0초";
+
+            // 상단 모드 배지
+            const modeBadge = document.getElementById('currentModeBadge');
+            if (modeBadge) {
+                if (currentPracticeMode === 'advanced') {
+                    modeBadge.className = "text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 animate-pulse";
+                    modeBadge.innerText = "🔥 고급 모드 (2x)";
+                } else {
+                    modeBadge.className = "text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700";
+                    modeBadge.innerText = "🌱 일반 모드 (1x)";
+                }
+            }
+
+            // 라벨 및 문장 카드 UI 조정
+            const targetLabel = document.getElementById('targetLabel');
+            const advMeaningBox = document.getElementById('advancedMeaningBox');
+            const targetKoreanMeaning = document.getElementById('targetKoreanMeaning');
+            const targetSentence = document.getElementById('targetSentence');
+            const targetSentenceBlind = document.getElementById('targetSentenceBlind');
+            const normalSubMeaning = document.getElementById('normalSubMeaning');
+            const ttsContainer = document.getElementById('targetTTSContainer');
+            const ttsText = document.getElementById('targetTTSText');
+
+            // 영어 본문 설정
+            targetSentence.innerText = parsed.english;
+
+            if (currentPracticeMode === 'advanced') {
+                // [🔥 고급 모드]: 한국어 해석만 크게 표시, 영어 문장은 가림!
+                if (targetLabel) {
+                    targetLabel.className = "text-[11px] font-extrabold text-rose-600 uppercase tracking-wider block";
+                    targetLabel.innerHTML = '<i class="fa-solid fa-fire text-rose-500 mr-1"></i> 고급 도전: 아래 해석을 보고 영어로 말하세요! (점수 2배)';
+                }
+                if (advMeaningBox) advMeaningBox.classList.remove('hidden');
+                if (targetKoreanMeaning) {
+                    targetKoreanMeaning.innerText = parsed.korean || "(해석을 준비 중인 문장입니다)";
+                }
+                // 영어 문장은 숨김 처리
+                targetSentence.classList.add('hidden');
+                if (targetSentenceBlind) targetSentenceBlind.classList.remove('hidden');
+                if (normalSubMeaning) normalSubMeaning.classList.add('hidden');
+
+                // 발화 전에는 원어민 듣기를 숨김 (치팅 방지)
+                if (ttsContainer) ttsContainer.classList.add('hidden');
+            } else {
+                // [🌱 일반 모드]: 영어 문장 노출, 한국어는 보조 표시
+                if (targetLabel) {
+                    targetLabel.className = "text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider block";
+                    targetLabel.innerText = "따라 읽을 문장";
+                }
+                if (advMeaningBox) advMeaningBox.classList.add('hidden');
+                targetSentence.classList.remove('hidden');
+                if (targetSentenceBlind) targetSentenceBlind.classList.add('hidden');
+
+                if (normalSubMeaning) {
+                    if (parsed.korean) {
+                        normalSubMeaning.innerText = `뜻: ${parsed.korean}`;
+                        normalSubMeaning.classList.remove('hidden');
+                    } else {
+                        normalSubMeaning.classList.add('hidden');
+                    }
+                }
+
+                if (ttsContainer) {
+                    ttsContainer.classList.remove('hidden');
+                    if (ttsText) ttsText.innerText = "원어민 발음 듣기";
+                }
+            }
 
             const recBtn = document.getElementById('recordBtn');
             recBtn.className = "w-full max-w-sm py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base rounded-2xl shadow-md transition flex items-center justify-center gap-2";
             recBtn.innerHTML = '<i class="fa-solid fa-microphone text-lg"></i><span>마이크 켜고 읽기 시작</span>';
 
-            document.getElementById('feedbackArea').innerHTML = '마이크를 켜고 영어를 소리 내어 읽으면 AI가 발음을 분석합니다.';
+            const feedbackArea = document.getElementById('feedbackArea');
+            if (currentPracticeMode === 'advanced') {
+                feedbackArea.className = "min-h-[70px] p-4 bg-rose-50/50 border border-rose-200 rounded-2xl text-center flex flex-col items-center justify-center text-xs font-semibold text-rose-600";
+                feedbackArea.innerHTML = '<div class="flex items-center gap-1.5"><i class="fa-solid fa-microphone-lines text-base"></i><span>마이크를 켜고 위 해석에 맞는 영어 문장을 자신있게 말해보세요!</span></div>';
+            } else {
+                feedbackArea.className = "min-h-[70px] p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center text-xs font-medium text-slate-500";
+                feedbackArea.innerHTML = "마이크를 켜고 영어를 소리 내어 읽으면 AI가 발음을 분석합니다.";
+            }
+
             document.getElementById('practiceNavButtons').classList.add('hidden');
             pendingResult = null;
         }
@@ -1150,7 +1478,10 @@
         }
 
         window.playTargetTTS = () => {
-            const text = document.getElementById('targetSentence').innerText;
+            const list = loadedUnits[currentPracticeUnit] || [];
+            const raw = list[currentSentenceIndex] || document.getElementById('targetSentence').innerText;
+            const parsed = parseSentenceItem(raw);
+            const text = parsed.english || document.getElementById('targetSentence').innerText;
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utter = new SpeechSynthesisUtterance(text);
@@ -1217,7 +1548,10 @@
                 const recognizedText = event.results[0][0].transcript;
                 const timeTaken = (Date.now() - startTime) / 1000;
 
-                const targetText = document.getElementById('targetSentence').innerText;
+                const list = loadedUnits[currentPracticeUnit] || [];
+                const rawTarget = list[currentSentenceIndex] || document.getElementById('targetSentence').innerText;
+                const parsed = parseSentenceItem(rawTarget);
+                const targetText = parsed.english || document.getElementById('targetSentence').innerText;
                 evaluateAndShowFeedback(targetText, recognizedText, timeTaken);
             };
 
@@ -1283,11 +1617,34 @@
             if (accuracy >= 65 && timeTaken < targetTime) {
                 speedBonus = Math.min(20, Math.max(0, Math.round((targetTime - timeTaken) * 4)));
             }
-            let sentenceScore = Math.min(120, Math.round(accuracy + speedBonus));
+
+            // 기본 점수 계산 (최대 120점)
+            const baseScore = Math.min(120, Math.round(accuracy + speedBonus));
+
+            // 🔥 고급 모드일 때 점수 더블(2배)!
+            const multiplier = (currentPracticeMode === 'advanced') ? 2 : 1;
+            const sentenceScore = baseScore * multiplier;
 
             unitTotalAccuracy += accuracy;
             unitTotalTime += timeTaken;
             currentUnitTotalScore += sentenceScore;
+
+            // 고급 모드일 때 발화 완료 후 정답 영어 문장 및 TTS 공개!
+            const list = loadedUnits[currentPracticeUnit] || [];
+            const parsed = parseSentenceItem(list[currentSentenceIndex]);
+            if (currentPracticeMode === 'advanced') {
+                const targetSentence = document.getElementById('targetSentence');
+                const targetSentenceBlind = document.getElementById('targetSentenceBlind');
+                const ttsContainer = document.getElementById('targetTTSContainer');
+                const ttsText = document.getElementById('targetTTSText');
+
+                if (targetSentence) targetSentence.classList.remove('hidden');
+                if (targetSentenceBlind) targetSentenceBlind.classList.add('hidden');
+                if (ttsContainer) {
+                    ttsContainer.classList.remove('hidden');
+                    if (ttsText) ttsText.innerText = "🔊 정답 원어민 발음 듣기";
+                }
+            }
 
             const feedbackArea = document.getElementById('feedbackArea');
             let colorClass = "text-emerald-600";
@@ -1300,15 +1657,32 @@
                 badge = "👍 좋아요!";
             }
 
+            const doubleScoreBadge = (currentPracticeMode === 'advanced')
+                ? `<span class="inline-flex items-center gap-1 bg-rose-600 text-white font-black text-[11px] px-2 py-0.5 rounded-full shadow-xs animate-pulse">🔥 더블 점수 2x (+${sentenceScore}점)</span>`
+                : `<span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full text-[11px]">+${sentenceScore}점</span>`;
+
+            feedbackArea.className = "min-h-[70px] p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center text-xs font-medium text-slate-500";
             feedbackArea.innerHTML = `
-                <div class="space-y-1.5 w-full">
+                <div class="space-y-2 w-full">
                     <div class="flex items-center justify-between text-xs">
                         <span class="font-black ${colorClass}">${badge}</span>
-                        <span class="font-bold text-slate-500">인식 정확도: <strong class="text-indigo-600">${accuracy}%</strong> • 소요: ${timeTaken.toFixed(1)}초${speedBonus > 0 ? ' (스피드+' + speedBonus + ')' : ''}</span>
+                        <div class="flex items-center gap-1.5">
+                            ${doubleScoreBadge}
+                            <span class="font-bold text-slate-500">인식 정확도: <strong class="text-indigo-600">${accuracy}%</strong> • ${timeTaken.toFixed(1)}초${speedBonus > 0 ? ' (스피드+' + speedBonus + ')' : ''}</span>
+                        </div>
                     </div>
-                    <div class="p-2.5 bg-white border border-slate-200 rounded-xl text-left text-xs font-semibold text-slate-700">
-                        <span class="text-[10px] text-slate-400 block mb-0.5">내가 읽은 발음:</span>
-                        "${recognized}"
+                    <div class="p-2.5 bg-white border border-slate-200 rounded-xl text-left text-xs font-semibold text-slate-700 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-bold">내가 읽은 발음:</span>
+                            <span class="text-[10px] ${accuracy >= 80 ? 'text-emerald-600' : 'text-amber-600'} font-bold">${accuracy}% 일치</span>
+                        </div>
+                        <div class="text-slate-800 font-bold">"${recognized || '(음성 인식 실패)'}"</div>
+                        ${currentPracticeMode === 'advanced' ? `
+                            <div class="pt-1.5 mt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-rose-600 font-bold">🎯 정답 영어 문장:</span>
+                                <span class="text-slate-800 font-black">${parsed.english}</span>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1336,11 +1710,39 @@
             const list = loadedUnits[currentPracticeUnit] || [];
             const count = list.length || 1;
             const avgAccuracy = Math.round(unitTotalAccuracy / count);
-            const totalScore = Math.max(50, Math.min(120, Math.round(currentUnitTotalScore / count)));
 
-            document.getElementById('finalResultUnitTitle').innerText = `[${currentPracticeUnit}] ${count}문장 완주`;
+            // 점수 더블 계산
+            const multiplier = (currentPracticeMode === 'advanced') ? 2 : 1;
+            const baseAvgScore = Math.max(50, Math.min(120, Math.round((currentUnitTotalScore / multiplier) / count)));
+            const totalScore = baseAvgScore * multiplier;
+
+            const modeLabel = (currentPracticeMode === 'advanced') ? '🔥 고급 (2x 더블)' : '🌱 일반';
+            document.getElementById('finalResultUnitTitle').innerHTML = `
+                <div class="text-sm font-black text-indigo-900">[${currentPracticeUnit}] ${count}문장 완주</div>
+                <div class="mt-1 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-black ${currentPracticeMode === 'advanced' ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-indigo-100 text-indigo-700'}">
+                    ${modeLabel} 모드 완주
+                </div>
+            `;
             document.getElementById('finalScoreDisplay').innerText = totalScore;
-            
+
+            const finalScoreCard = document.getElementById('finalScoreCard');
+            const finalScoreLabel = document.getElementById('finalScoreLabel');
+            if (finalScoreCard) {
+                if (currentPracticeMode === 'advanced') {
+                    finalScoreCard.className = "p-5 bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-300 rounded-2xl shadow-sm relative";
+                    if (finalScoreLabel) {
+                        finalScoreLabel.className = "text-xs text-rose-700 font-black block mb-1";
+                        finalScoreLabel.innerHTML = "🔥 고급 모드 더블 스코어(2x) 획득 점수";
+                    }
+                } else {
+                    finalScoreCard.className = "p-5 bg-indigo-50 border border-indigo-200 rounded-2xl";
+                    if (finalScoreLabel) {
+                        finalScoreLabel.className = "text-xs text-indigo-600 font-bold block mb-1";
+                        finalScoreLabel.innerText = "최종 획득 점수";
+                    }
+                }
+            }
+
             const statusEl = document.getElementById('saveStatus');
             if (statusEl) {
                 statusEl.className = "text-xs font-bold text-indigo-600 animate-pulse";
@@ -1350,7 +1752,7 @@
             window.showScreen('screen-result');
 
             // 점수 저장
-            await saveScoreToDB(currentPracticeUnit, totalScore, unitTotalTime, avgAccuracy);
+            await saveScoreToDB(currentPracticeUnit, totalScore, unitTotalTime, avgAccuracy, currentPracticeMode);
         }
 
         function normalizeScoreDoc(id, data) {
@@ -1374,6 +1776,9 @@
             const classStr = String(data.classNum || data.class || '');
             const numStr = String(data.studentNum || data.number || '');
 
+            const mode = data.mode || (String(data.unit || '').includes('[고급]') ? 'advanced' : 'normal');
+            const modeLabel = data.modeLabel || (mode === 'advanced' ? '고급' : '일반');
+
             return {
                 id: id,
                 name: rawName,
@@ -1383,6 +1788,8 @@
                 classNum: classStr,
                 studentNum: numStr,
                 unit: data.baseUnit || data.unit || '기본 단원',
+                mode: mode,
+                modeLabel: modeLabel,
                 score: parseInt(data.score, 10) || 0,
                 accuracy: data.accuracy || 0,
                 time: data.time || 0,
@@ -1399,7 +1806,7 @@
             }
         }
 
-        async function saveScoreToDB(unitName, score, timeTaken, accuracy) {
+        async function saveScoreToDB(unitName, score, timeTaken, accuracy, mode = 'normal') {
             const studentInfo = getStudentInfo();
             const sName = studentInfo.name || '학생';
             const sGrade = studentInfo.grade || '6';
@@ -1409,6 +1816,8 @@
             const scoreData = {
                 unit: unitName,
                 baseUnit: unitName,
+                mode: mode,
+                modeLabel: mode === 'advanced' ? '고급' : '일반',
                 grade: String(sGrade),
                 classNum: String(sClass),
                 studentNum: String(sNum),
@@ -1435,6 +1844,8 @@
                     classNum: String(sClass),
                     studentNum: String(sNum),
                     unit: unitName,
+                    mode: mode,
+                    modeLabel: mode === 'advanced' ? '고급' : '일반',
                     score: score,
                     accuracy: accuracy,
                     time: Math.round(timeTaken * 10) / 10,
@@ -1467,6 +1878,8 @@
                     classNum: String(sClass),
                     studentNum: String(sNum),
                     unit: unitName,
+                    mode: mode,
+                    modeLabel: mode === 'advanced' ? '고급' : '일반',
                     score: score,
                     accuracy: accuracy,
                     time: Math.round(timeTaken * 10) / 10,
@@ -1536,6 +1949,7 @@
             const g = document.getElementById('hof-filter-grade') ? document.getElementById('hof-filter-grade').value : 'ALL';
             const c = document.getElementById('hof-filter-class') ? document.getElementById('hof-filter-class').value : 'ALL';
             const u = document.getElementById('hof-filter-unit') ? document.getElementById('hof-filter-unit').value : 'ALL';
+            const m = document.getElementById('hof-filter-mode') ? document.getElementById('hof-filter-mode').value : 'ALL';
 
             const now = new Date();
             const curYear = now.getFullYear();
@@ -1546,6 +1960,7 @@
                 if (g !== 'ALL' && item.grade !== g) return false;
                 if (c !== 'ALL' && item.classNum !== c) return false;
                 if (u !== 'ALL' && item.unit !== u) return false;
+                if (m !== 'ALL' && item.mode !== m) return false;
 
                 if (hofCurrentPeriod !== 'all' && item.timestamp) {
                     const t = new Date(item.timestamp);
@@ -1562,11 +1977,12 @@
             const uniqueMap = new Map();
             filtered.forEach(item => {
                 const isGenericName = (!item.name || item.name === '학생');
+                const modeKey = (m === 'ALL') ? `_${item.mode || 'normal'}` : '';
                 const key = isGenericName
                     ? item.id
                     : (item.studentNum 
-                        ? `${item.grade}_${item.classNum}_${item.studentNum}_${item.name}_${u === 'ALL' ? '' : item.unit}`
-                        : `${item.schoolInfo}_${item.name}_${u === 'ALL' ? '' : item.unit}`);
+                        ? `${item.grade}_${item.classNum}_${item.studentNum}_${item.name}_${u === 'ALL' ? '' : item.unit}${modeKey}`
+                        : `${item.schoolInfo}_${item.name}_${u === 'ALL' ? '' : item.unit}${modeKey}`);
 
                 if (!uniqueMap.has(key) || uniqueMap.get(key).score < item.score) {
                     uniqueMap.set(key, item);
@@ -1603,6 +2019,10 @@
                 const safeUnit = sanitize(item.unit);
                 const safeSchool = item.schoolInfo ? sanitize(item.schoolInfo) + ' • ' : '';
 
+                const modeTag = (item.mode === 'advanced' || item.modeLabel === '고급')
+                    ? '<span class="text-[9px] font-black bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded-full">🔥 고급 2x</span>'
+                    : '<span class="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded-full">🌱 일반</span>';
+
                 return `
                     <div class="flex items-center justify-between p-2.5 bg-white border border-indigo-100 rounded-xl hover:border-indigo-300 transition shadow-2xs">
                         <div class="flex items-center gap-3">
@@ -1613,6 +2033,7 @@
                                 <div class="font-black text-slate-800 text-xs flex items-center gap-1.5">
                                     <span>${safeName}</span>
                                     <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">${safeUnit}</span>
+                                    ${modeTag}
                                 </div>
                                 <div class="text-[10px] text-slate-400 font-medium">
                                     ${safeSchool}${dateStr}
@@ -1620,7 +2041,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="text-sm font-black text-indigo-600">${item.score.toLocaleString()}</span>
+                            <span class="text-sm font-black ${item.mode === 'advanced' ? 'text-rose-600' : 'text-indigo-600'}">${item.score.toLocaleString()}</span>
                             <span class="text-[10px] text-slate-500 font-bold ml-0.5">점</span>
                         </div>
                     </div>
@@ -1763,12 +2184,14 @@
             const g = document.getElementById('teacher-filter-grade') ? document.getElementById('teacher-filter-grade').value : 'ALL';
             const c = document.getElementById('teacher-filter-class') ? document.getElementById('teacher-filter-class').value : 'ALL';
             const u = document.getElementById('teacher-filter-unit') ? document.getElementById('teacher-filter-unit').value : 'ALL';
+            const m = document.getElementById('teacher-filter-mode') ? document.getElementById('teacher-filter-mode').value : 'ALL';
             const sortBy = document.getElementById('teacher-sort-by') ? document.getElementById('teacher-sort-by').value : 'recent';
 
             let filtered = hofAllScores.filter(item => {
                 if (g !== 'ALL' && item.grade !== g) return false;
                 if (c !== 'ALL' && item.classNum !== c) return false;
                 if (u !== 'ALL' && item.unit !== u) return false;
+                if (m !== 'ALL' && item.mode !== m) return false;
                 return true;
             });
 
@@ -1793,13 +2216,18 @@
             tbody.innerHTML = filtered.map((s, idx, arr) => {
                 // 동점자 동일 순위 및 차순위 건너뛰기 (점수순 정렬 시)
                 const rank = (sortBy === 'score') ? (arr.findIndex(x => Number(x.score || 0) <= Number(s.score || 0)) + 1) : (idx + 1);
+                const modeBadge = (s.mode === 'advanced' || s.modeLabel === '고급')
+                    ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">🔥 고급 (2x)</span>'
+                    : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">🌱 일반</span>';
+
                 return `
                 <tr class="hover:bg-indigo-50/50 transition">
                     <td class="p-2.5 font-bold">${rank}</td>
                     <td class="p-2.5 font-black text-slate-800">${sanitize(s.maskedName)}</td>
                     <td class="p-2.5 font-semibold text-slate-600">${s.schoolInfo ? sanitize(s.schoolInfo) : '-'}</td>
                     <td class="p-2.5 font-semibold text-indigo-700">${sanitize(s.unit)}</td>
-                    <td class="p-2.5 font-black text-indigo-600">${Number(s.score || 0).toLocaleString()}점</td>
+                    <td class="p-2.5">${modeBadge}</td>
+                    <td class="p-2.5 font-black ${s.mode === 'advanced' ? 'text-rose-600' : 'text-indigo-600'}">${Number(s.score || 0).toLocaleString()}점</td>
                     <td class="p-2.5 font-bold text-slate-600">${s.accuracy}%</td>
                     <td class="p-2.5 font-medium text-slate-500">${s.time}초</td>
                     <td class="p-2.5 text-slate-400 text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleDateString('ko-KR') : '-'}</td>
@@ -1812,12 +2240,14 @@
             const g = document.getElementById('teacher-filter-grade') ? document.getElementById('teacher-filter-grade').value : 'ALL';
             const c = document.getElementById('teacher-filter-class') ? document.getElementById('teacher-filter-class').value : 'ALL';
             const u = document.getElementById('teacher-filter-unit') ? document.getElementById('teacher-filter-unit').value : 'ALL';
+            const m = document.getElementById('teacher-filter-mode') ? document.getElementById('teacher-filter-mode').value : 'ALL';
             const sortBy = document.getElementById('teacher-sort-by') ? document.getElementById('teacher-sort-by').value : 'recent';
 
             let filtered = hofAllScores.filter(item => {
                 if (g !== 'ALL' && item.grade !== g) return false;
                 if (c !== 'ALL' && item.classNum !== c) return false;
                 if (u !== 'ALL' && item.unit !== u) return false;
+                if (m !== 'ALL' && item.mode !== m) return false;
                 return true;
             });
 
@@ -1835,11 +2265,12 @@
                 return;
             }
 
-            let csv = "\uFEFF순위,이름,학적,단원,점수,정확도(%),소요시간(초),달성일시\n";
+            let csv = "\uFEFF순위,이름,학적,단원,난이도,점수,정확도(%),소요시간(초),달성일시\n";
             filtered.forEach((item, idx) => {
                 const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString('ko-KR') : '';
                 const studentDisplayName = item.name || item.maskedName || '학생';
-                csv += `"${idx + 1}","${studentDisplayName}","${item.schoolInfo || ''}","${item.unit || ''}","${item.score}","${item.accuracy}","${item.time}","${dateStr}"\n`;
+                const modeStr = (item.mode === 'advanced' || item.modeLabel === '고급') ? '고급 (2x)' : '일반';
+                csv += `"${idx + 1}","${studentDisplayName}","${item.schoolInfo || ''}","${item.unit || ''}","${modeStr}","${item.score}","${item.accuracy}","${item.time}","${dateStr}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
